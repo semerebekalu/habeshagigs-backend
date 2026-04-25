@@ -6,6 +6,7 @@ const { db } = require('../config/db');
 const { revokeToken } = require('../config/redis');
 const { signToken } = require('../utils/jwt');
 const { authenticate } = require('../middleware/auth');
+const { rateLimiter } = require('../middleware/rateLimiter');
 const { enqueueNotification } = require('../modules/notification/notificationService');
 const { sendOTP, sendPasswordReset } = require('../utils/emailService');
 
@@ -13,8 +14,14 @@ function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Rate limiters
+const loginLimiter     = rateLimiter({ windowMs: 15 * 60_000, max: 10, message: 'Too many login attempts. Please wait 15 minutes.' });
+const otpLimiter       = rateLimiter({ windowMs: 10 * 60_000, max: 5,  message: 'Too many OTP requests. Please wait 10 minutes.' });
+const registerLimiter  = rateLimiter({ windowMs: 60 * 60_000, max: 5,  message: 'Too many registrations from this IP. Please try again later.' });
+const forgotLimiter    = rateLimiter({ windowMs: 60 * 60_000, max: 5,  message: 'Too many password reset requests. Please wait an hour.' });
+
 // POST /api/auth/register
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
     const { name, email, phone, password, role } = req.body;
 
     // Validate required fields — phone is now mandatory
@@ -85,7 +92,7 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/verify-otp
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', otpLimiter, async (req, res) => {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Email and OTP required' });
     try {
@@ -108,7 +115,7 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 // POST /api/auth/resend-otp
-router.post('/resend-otp', async (req, res) => {
+router.post('/resend-otp', otpLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(422).json({ error: 'VALIDATION_ERROR' });
     try {
@@ -133,7 +140,7 @@ router.post('/resend-otp', async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(422).json({ error: 'VALIDATION_ERROR' });
     try {
@@ -213,7 +220,7 @@ router.post('/switch-role', authenticate, async (req, res) => {
 });
 
 // POST /api/auth/forgot-password
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', forgotLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Email required' });
     try {

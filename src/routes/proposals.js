@@ -2,11 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/db');
 const { authenticate, requireKYC, requireVerified } = require('../middleware/auth');
+const { rateLimiter } = require('../middleware/rateLimiter');
 const { enqueueNotification } = require('../modules/notification/notificationService');
 const { calculateFee } = require('../utils/feeCalculator');
 
+const proposalLimiter = rateLimiter({ windowMs: 60 * 60_000, max: 20, message: 'Too many proposals submitted. Please wait an hour.' });
+
 // POST /api/proposals — freelancer submits a proposal (must be email-verified)
-router.post('/', authenticate, requireVerified, async (req, res) => {
+router.post('/', authenticate, requireVerified, proposalLimiter, async (req, res) => {
     const { job_id, cover_letter, bid_amount, delivery_days } = req.body;
     if (!job_id) return res.status(422).json({ error: 'VALIDATION_ERROR', fields: { job_id: 'Required' } });
     try {

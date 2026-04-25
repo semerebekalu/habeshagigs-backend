@@ -251,6 +251,8 @@ setImmediate(async () => {
         await addColumnIfMissing('users', 'suspension_reason', 'TEXT NULL');
         await addColumnIfMissing('users', 'suspended_until', 'DATETIME NULL');
         await addColumnIfMissing('users', 'suspended_at', 'DATETIME NULL');
+        await addColumnIfMissing('disputes', 'evidence_files', 'JSON NULL');
+        await addColumnIfMissing('disputes', 'evidence_note', 'TEXT NULL');
 
         console.log('✅ Startup schema checks complete');
     } catch (e) {
