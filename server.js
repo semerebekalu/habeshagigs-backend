@@ -88,10 +88,14 @@ app.get('/api/fix-schema', async (req, res) => {
         "UPDATE gigs SET status = 'active' WHERE status IS NULL",
         "ALTER TABLE proposals ADD COLUMN IF NOT EXISTS cover_letter TEXT NULL",
         "ALTER TABLE proposals ADD COLUMN IF NOT EXISTS delivery_days INT DEFAULT 1",
-        "UPDATE proposals SET cover_letter = proposal_text WHERE cover_letter IS NULL AND proposal_text IS NOT NULL"
+        "UPDATE proposals SET cover_letter = proposal_text WHERE cover_letter IS NULL AND proposal_text IS NOT NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code VARCHAR(10) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires DATETIME NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(100) NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires DATETIME NULL"
     ];
     const results = await Promise.allSettled(fixes.map(sql =>
-        db.query(sql).then(() => ({ ok: true, sql: sql.substring(0, 40) }))
+        db.query(sql).then(() => ({ ok: true, sql: sql.substring(0, 60) }))
     ));
     res.json({ done: true, results: results.map(r => r.status === 'fulfilled' ? r.value : { ok: false, err: r.reason?.message }) });
 });
@@ -216,9 +220,17 @@ io.on('connection', (socket) => {
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires DATETIME NULL"
         ];
         for (const sql of safeAlters) {
-            await dbConn.query(sql).catch(() => {}); // ignore if already applied
+            try {
+                await dbConn.query(sql);
+                console.log(`✅ Schema: ${sql.substring(0, 60)}`);
+            } catch (e) {
+                console.error(`⚠️  Schema alter failed: ${e.message} | SQL: ${sql.substring(0, 60)}`);
+            }
         }
-    } catch {}
+        console.log('✅ Startup schema checks complete');
+    } catch (e) {
+        console.error('❌ Startup schema error:', e.message);
+    }
 })();
 
 // ── Cron jobs ────────────────────────────────────────────────
