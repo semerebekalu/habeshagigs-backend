@@ -1,17 +1,22 @@
 const nodemailer = require('nodemailer');
 
 function createTransporter() {
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
     return nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-        port: parseInt(process.env.SMTP_PORT || '465', 10),
-        secure: parseInt(process.env.SMTP_PORT || '465', 10) === 465,
+        port,
+        secure: port === 465,
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS
         },
         tls: {
-            rejectUnauthorized: false
-        }
+            rejectUnauthorized: false,
+            ciphers: 'SSLv3'
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000
     });
 }
 
