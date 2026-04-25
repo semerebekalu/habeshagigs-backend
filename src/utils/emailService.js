@@ -109,4 +109,4 @@ async function sendPasswordReset(to, resetLink, name) {
     }
 }
 
-module.exports = { sendOTP, sendPasswordReset };
+module.exports = { sendOTP, sendPasswordReset, sendEmail };

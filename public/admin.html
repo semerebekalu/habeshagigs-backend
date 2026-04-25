@@ -117,14 +117,14 @@
         <div class="form-group">
           <label>Duration</label>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
-            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(1)">1 Day</button>
-            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(3)">3 Days</button>
-            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(7)">7 Days</button>
-            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(30)">30 Days</button>
+            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(1,this)">1 Day</button>
+            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(3,this)">3 Days</button>
+            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(7,this)">7 Days</button>
+            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(30,this)">30 Days</button>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <input type="number" id="suspendDays" placeholder="Custom days (leave empty = indefinite)" min="1" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;" />
-            <button type="button" class="btn btn-sm btn-outline" onclick="setDuration(null)">Indefinite</button>
+            <input type="number" id="suspendDays" placeholder="Custom days (leave empty = indefinite)" min="1" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;" oninput="onSuspendDaysInput(this.value)" />
+            <button type="button" class="btn btn-sm btn-outline" onclick="setDuration(null,this)">Indefinite</button>
           </div>
           <div id="suspendUntilPreview" style="font-size:.8rem;color:var(--muted);margin-top:6px;"></div>
         </div>
@@ -370,7 +370,7 @@ function closeSuspendModal() {
   document.getElementById('suspendModal').style.display = 'none';
 }
 
-function setDuration(days) {
+function setDuration(days, btn) {
   const input = document.getElementById('suspendDays');
   const preview = document.getElementById('suspendUntilPreview');
   if (days === null) {
@@ -383,19 +383,20 @@ function setDuration(days) {
   }
   // Highlight selected button
   document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('btn-primary'));
-  if (days !== null) event?.target?.classList.add('btn-primary');
+  if (days !== null && btn) btn.classList.add('btn-primary');
 }
 
-document.getElementById('suspendDays')?.addEventListener('input', function() {
-  const days = parseInt(this.value);
+function onSuspendDaysInput(val) {
+  const days = parseInt(val);
   const preview = document.getElementById('suspendUntilPreview');
+  document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('btn-primary'));
   if (days > 0) {
     const until = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     preview.textContent = `Account reactivates on: ${until.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
   } else {
     preview.textContent = 'Indefinite suspension (no end date)';
   }
-});
+}
 
 async function confirmSuspend() {
   const userId = document.getElementById('suspendUserId').value;
