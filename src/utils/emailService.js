@@ -1,36 +1,63 @@
-const nodemailer = require('nodemailer');
+const fetch = require('node-fetch');
 
-function createTransporter() {
+// Use Brevo HTTP API (avoids SMTP port blocking on Railway)
+// Falls back to nodemailer SMTP if BREVO_API_KEY not set
+async function sendEmail({ to, toName, subject, html }) {
+    const apiKey = process.env.BREVO_API_KEY;
+
+    if (apiKey) {
+        // Brevo HTTP API — port 443, never blocked
+        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'api-key': apiKey,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: { name: 'Ethio Gigs', email: process.env.SMTP_USER || 'a94931001@smtp-brevo.com' },
+                to: [{ email: to, name: toName || to }],
+                subject,
+                htmlContent: html
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`Brevo API error: ${JSON.stringify(data)}`);
+        }
+        console.log(`✅ Email sent to ${to} via Brevo API — messageId: ${data.messageId}`);
+        return data;
+    }
+
+    // Fallback: nodemailer SMTP
+    const nodemailer = require('nodemailer');
     const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    return nodemailer.createTransport({
+    const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
         port,
         secure: port === 465,
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
-        },
-        tls: {
-            rejectUnauthorized: false,
-            ciphers: 'SSLv3'
-        },
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+        tls: { rejectUnauthorized: false },
         connectionTimeout: 10000,
-        greetingTimeout: 10000,
         socketTimeout: 15000
     });
-}
-
-function getFrom() {
-    return process.env.SMTP_FROM || `Ethio Gigs <${process.env.SMTP_USER}>`;
+    const info = await transporter.sendMail({
+        from: process.env.SMTP_FROM || `Ethio Gigs <${process.env.SMTP_USER}>`,
+        to,
+        subject,
+        html
+    });
+    console.log(`✅ Email sent to ${to} via SMTP — messageId: ${info.messageId}`);
+    return info;
 }
 
 async function sendOTP(to, otp, name) {
-    const transporter = createTransporter();
-    console.log(`📧 Sending OTP to ${to} via ${process.env.SMTP_HOST}:${process.env.SMTP_PORT} as ${process.env.SMTP_USER}`);
+    console.log(`📧 Sending OTP to ${to}`);
     try {
-        const info = await transporter.sendMail({
-            from: getFrom(),
+        await sendEmail({
             to,
+            toName: name,
             subject: '🔐 Your Ethio Gigs Verification Code',
             html: `
             <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
@@ -48,7 +75,6 @@ async function sendOTP(to, otp, name) {
               <p style="color:#94a3b8;font-size:0.78rem;text-align:center;margin-top:16px;">© 2026 Ethio Gigs. Ethiopia's Freelance Marketplace.</p>
             </div>`
         });
-        console.log(`✅ OTP email sent to ${to} — messageId: ${info.messageId}`);
     } catch (err) {
         console.error(`❌ OTP email failed to ${to}:`, err.message);
         throw err;
@@ -56,12 +82,11 @@ async function sendOTP(to, otp, name) {
 }
 
 async function sendPasswordReset(to, resetLink, name) {
-    const transporter = createTransporter();
     console.log(`📧 Sending password reset to ${to}`);
     try {
-        const info = await transporter.sendMail({
-            from: getFrom(),
+        await sendEmail({
             to,
+            toName: name,
             subject: '🔑 Reset your Ethio Gigs password',
             html: `
             <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
@@ -78,7 +103,6 @@ async function sendPasswordReset(to, resetLink, name) {
               </div>
             </div>`
         });
-        console.log(`✅ Password reset email sent to ${to} — messageId: ${info.messageId}`);
     } catch (err) {
         console.error(`❌ Password reset email failed to ${to}:`, err.message);
         throw err;
