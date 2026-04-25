@@ -209,7 +209,11 @@ io.on('connection', (socket) => {
         const { db: dbConn } = require('./src/config/db');
         const safeAlters = [
             "ALTER TABLE transactions MODIFY COLUMN type ENUM('escrow_fund','milestone_release','full_release','withdrawal','refund','fee','topup') NOT NULL",
-            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS gateway_ref VARCHAR(255) NULL"
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS gateway_ref VARCHAR(255) NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code VARCHAR(10) NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires DATETIME NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(100) NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires DATETIME NULL"
         ];
         for (const sql of safeAlters) {
             await dbConn.query(sql).catch(() => {}); // ignore if already applied
