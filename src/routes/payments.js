@@ -5,6 +5,7 @@ const { authenticate, requireAdmin, requireKYC } = require('../middleware/auth')
 const { calculateFee } = require('../utils/feeCalculator');
 const { enqueueNotification } = require('../modules/notification/notificationService');
 const { recalculate: recalculateReputation } = require('../modules/reputation/reputationEngine');
+const { processReferralReward } = require('./referrals');
 
 // POST /api/payments/initiate — fund escrow (KYC required)
 router.post('/initiate', authenticate, requireKYC, async (req, res) => {
@@ -88,6 +89,12 @@ router.post('/release-milestone', authenticate, async (req, res) => {
             const { recalculate } = require('../modules/reputation/reputationEngine');
             setImmediate(() => recalculate(contract.freelancer_id).catch(() => {}));
             contractCompleted = true;
+
+            // Process referral rewards for both parties
+            setImmediate(() => {
+                processReferralReward(contract.freelancer_id).catch(() => {});
+                processReferralReward(contract.client_id).catch(() => {});
+            });
 
             await enqueueNotification(contract.freelancer_id, 'contract_completed', {
                 title: '🎉 Contract Completed!',

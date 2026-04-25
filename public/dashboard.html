@@ -35,6 +35,7 @@
     <div class="sidebar-link" onclick="window.location='/chat.html'"><span class="icon">💬</span> <span data-i18n="nav.messages">Messages</span></div>
     <div class="sidebar-link" onclick="window.location='/group-chat.html'"><span class="icon">👥</span> Group Chats</div>
     <div class="sidebar-link" onclick="showTab('disputes')"><span class="icon">⚖️</span> <span data-i18n="dashboard.disputes">Disputes</span></div>
+    <div class="sidebar-link freelancer-only hidden" onclick="showTab('subscription')"><span class="icon">⭐</span> Subscription</div>
     <div class="sidebar-link" id="sidebarVerifyLink" onclick="window.location='/verify.html'" style="border-top:1px solid var(--border);margin-top:8px;"><span class="icon">🪪</span> Get Verified</div>
   </aside>
   <main class="dashboard-main">
@@ -391,6 +392,39 @@
       </div>
     </div>
 
+    <!-- Subscription (freelancers only) -->
+    <div id="tab-subscription" class="hidden">
+      <h2 class="dashboard-title">⭐ Subscription Plan</h2>
+
+      <!-- Current plan banner -->
+      <div id="currentPlanBanner" style="background:linear-gradient(135deg,#1E3A8A,#0f766e);color:#fff;border-radius:var(--radius);padding:24px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:.85rem;opacity:.8;margin-bottom:4px;">Current Plan</div>
+            <div style="font-size:1.8rem;font-weight:800;" id="currentPlanName">Free</div>
+            <div style="font-size:.88rem;opacity:.8;margin-top:4px;" id="currentPlanExpiry"></div>
+          </div>
+          <div id="currentPlanBadge" style="background:rgba(255,255,255,.2);padding:8px 20px;border-radius:20px;font-weight:700;font-size:.9rem;">Free Tier</div>
+        </div>
+      </div>
+
+      <!-- Referral section -->
+      <div class="table-card" style="padding:24px;margin-bottom:20px;">
+        <h4 style="font-weight:700;margin-bottom:4px;">🎁 Refer & Earn</h4>
+        <p style="color:var(--muted);font-size:.88rem;margin-bottom:16px;">Earn <strong>50 ETB</strong> for every person you refer who completes their first contract.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="referralLinkInput" readonly style="flex:1;min-width:200px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.88rem;background:var(--bg);" placeholder="Loading your referral link..." />
+          <button class="btn btn-teal btn-sm" onclick="copyReferralLink()">📋 Copy Link</button>
+        </div>
+        <div id="referralStats" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;"></div>
+      </div>
+
+      <!-- Tier cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:20px;" id="tierCards">
+        <div class="loading-spinner">Loading plans...</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -424,6 +458,7 @@ function showTab(name) {
   if (name === 'disputes') loadDisputes();
   if (name === 'contracts') loadContracts();
   if (name === 'alerts') loadAlerts();
+  if (name === 'subscription') loadSubscription();
 }
 
 async function loadOverview() {
@@ -1278,6 +1313,131 @@ async function deleteAlert(id) {
 
 loadOverview();
 loadNotifications();
+
+// ── Subscription & Referral ────────────────────────────────
+async function loadSubscription() {
+  try {
+    const [sub, tiers, refs] = await Promise.all([
+      apiFetch('/subscriptions/my'),
+      apiFetch('/subscriptions/tiers'),
+      apiFetch('/referrals/my')
+    ]);
+
+    // Current plan banner
+    const tierColors = { free: '#64748b', pro: '#1E3A8A', elite: '#7c3aed' };
+    document.getElementById('currentPlanName').textContent = sub.name || 'Free';
+    document.getElementById('currentPlanBadge').textContent = `${sub.name || 'Free'} Tier`;
+    document.getElementById('currentPlanBanner').style.background =
+      `linear-gradient(135deg, ${tierColors[sub.tier] || '#64748b'}, #0f766e)`;
+    if (sub.expires_at) {
+      document.getElementById('currentPlanExpiry').textContent =
+        `Active until ${new Date(sub.expires_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}`;
+    } else if (sub.tier !== 'free') {
+      document.getElementById('currentPlanExpiry').textContent = 'Active';
+    }
+
+    // Referral section
+    document.getElementById('referralLinkInput').value = refs.referral_link || '';
+    document.getElementById('referralStats').innerHTML = `
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:1.4rem;font-weight:800;color:var(--blue);">${refs.total_referrals}</div>
+        <div style="font-size:.75rem;color:var(--muted);">Total Referrals</div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:1.4rem;font-weight:800;color:#16a34a;">${refs.rewarded_referrals}</div>
+        <div style="font-size:.75rem;color:var(--muted);">Rewarded</div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:1.4rem;font-weight:800;color:var(--teal);">${parseFloat(refs.total_earned || 0).toFixed(0)} ETB</div>
+        <div style="font-size:.75rem;color:var(--muted);">Total Earned</div>
+      </div>`;
+
+    // Tier cards
+    const tierOrder = ['free', 'pro', 'elite'];
+    const tierIcons = { free: '🆓', pro: '⭐', elite: '💎' };
+    const tierHighlight = { free: '', pro: 'border:2px solid var(--blue);', elite: 'border:2px solid #7c3aed;' };
+    document.getElementById('tierCards').innerHTML = tierOrder.map(key => {
+      const t = tiers[key];
+      const isCurrent = sub.tier === key;
+      return `
+        <div style="background:var(--card);border-radius:var(--radius);padding:24px;${tierHighlight[key]}${isCurrent ? 'box-shadow:0 0 0 3px rgba(30,58,138,.2);' : ''}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+            <div>
+              <div style="font-size:1.5rem;">${tierIcons[key]}</div>
+              <div style="font-weight:800;font-size:1.1rem;margin-top:4px;">${t.name}</div>
+            </div>
+            ${isCurrent ? '<span style="background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700;">Current</span>' : ''}
+          </div>
+          <div style="font-size:1.6rem;font-weight:800;color:var(--blue);margin-bottom:4px;">
+            ${t.price === 0 ? 'Free' : `${t.price} ETB`}
+            ${t.price > 0 ? '<span style="font-size:.8rem;font-weight:400;color:var(--muted);">/month</span>' : ''}
+          </div>
+          <ul style="list-style:none;padding:0;margin:12px 0;font-size:.88rem;color:var(--muted);">
+            <li style="padding:4px 0;">📩 ${t.proposals_per_month === -1 ? 'Unlimited' : t.proposals_per_month} proposals/month</li>
+            <li style="padding:4px 0;">${t.featured_in_search ? '✅' : '❌'} Featured in search</li>
+            <li style="padding:4px 0;">💰 ${(t.commission_rate * 100).toFixed(0)}% platform commission</li>
+            ${t.verified_badge_boost ? '<li style="padding:4px 0;">🏆 Top search placement</li>' : ''}
+          </ul>
+          ${!isCurrent && key !== 'free' ? `
+            <div style="margin-bottom:10px;">
+              <label style="font-size:.82rem;color:var(--muted);">Months</label>
+              <select id="months-${key}" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:6px;margin-top:4px;font-size:.9rem;">
+                <option value="1">1 month — ${t.price} ETB</option>
+                <option value="3">3 months — ${t.price * 3} ETB</option>
+                <option value="6">6 months — ${t.price * 6} ETB</option>
+                <option value="12">12 months — ${t.price * 12} ETB</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="subscribeTo('${key}')">Upgrade to ${t.name}</button>
+          ` : isCurrent && key !== 'free' ? `
+            <button class="btn btn-outline btn-full" onclick="cancelSubscription()">Cancel Plan</button>
+          ` : '<div style="text-align:center;color:var(--muted);font-size:.85rem;padding:8px 0;">Basic access</div>'}
+        </div>`;
+    }).join('');
+  } catch (err) {
+    console.error('loadSubscription error', err);
+  }
+}
+
+async function subscribeTo(tier) {
+  const months = parseInt(document.getElementById(`months-${tier}`)?.value || 1);
+  try {
+    const res = await apiFetch('/subscriptions/upgrade', {
+      method: 'POST',
+      body: JSON.stringify({ tier, months })
+    });
+    toast(`🎉 ${res.message}`, 'success');
+    loadSubscription();
+    loadWallet(); // refresh balance
+  } catch (err) {
+    if (err.error === 'INSUFFICIENT_BALANCE') {
+      if (confirm(`💳 ${err.message}\n\nTop up your wallet now?`)) showTab('wallet');
+    } else {
+      toast(err.message || 'Failed to subscribe', 'error');
+    }
+  }
+}
+
+async function cancelSubscription() {
+  if (!confirm('Cancel your subscription? You will revert to the Free plan immediately.')) return;
+  try {
+    await apiFetch('/subscriptions/cancel', { method: 'POST' });
+    toast('Subscription cancelled', 'success');
+    loadSubscription();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+function copyReferralLink() {
+  const input = document.getElementById('referralLinkInput');
+  if (!input?.value) return;
+  navigator.clipboard.writeText(input.value).then(() => {
+    toast('Referral link copied!', 'success');
+  }).catch(() => {
+    input.select();
+    document.execCommand('copy');
+    toast('Referral link copied!', 'success');
+  });
+}
 
 async function saveProfile() {
   const body = {

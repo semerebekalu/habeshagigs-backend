@@ -85,6 +85,17 @@ router.post('/register', registerLimiter, async (req, res) => {
             user: { id: userId, name, email, role, active_role: activeRole, is_verified: 0, kyc_status: 'none' },
             message: `Verification code sent to ${email}.`
         });
+
+        // Apply referral code if provided (fire and forget)
+        const refCode = req.body.ref_code || req.query.ref;
+        if (refCode) {
+            const fetch = require('node-fetch');
+            fetch(`${process.env.APP_URL || 'http://localhost:' + (process.env.PORT || 5001)}/api/referrals/apply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ referred_id: userId, referral_code: refCode })
+            }).catch(() => {});
+        }
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'SERVER_ERROR', message: err.message });

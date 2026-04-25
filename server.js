@@ -49,6 +49,8 @@ app.use('/api/teams',         require('./src/routes/teams'));
 app.use('/api/ai',            require('./src/routes/ai'));
 app.use('/api/translate',     require('./src/routes/ai'));
 app.use('/api/group-chats',   require('./src/routes/groupChats'));
+app.use('/api/subscriptions', require('./src/routes/subscriptions').router);
+app.use('/api/referrals',     require('./src/routes/referrals').router);
 
 // ── Static frontend ─────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -253,6 +255,10 @@ setImmediate(async () => {
         await addColumnIfMissing('users', 'suspended_at', 'DATETIME NULL');
         await addColumnIfMissing('disputes', 'evidence_files', 'JSON NULL');
         await addColumnIfMissing('disputes', 'evidence_note', 'TEXT NULL');
+        await addColumnIfMissing('users', 'referral_code', 'VARCHAR(20) NULL');
+        await addColumnIfMissing('users', 'referred_by', 'INT NULL');
+        await addColumnIfMissing('jobs', 'is_promoted', 'TINYINT(1) DEFAULT 0');
+        await addColumnIfMissing('jobs', 'promoted_until', 'DATETIME NULL');
 
         console.log('✅ Startup schema checks complete');
     } catch (e) {
