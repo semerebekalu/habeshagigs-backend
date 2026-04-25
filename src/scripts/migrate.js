@@ -12,7 +12,10 @@ async function migrate() {
 
     // Support Railway MYSQL_URL or individual env vars
     if (process.env.MYSQL_URL) {
-        db = await mysql.createConnection(process.env.MYSQL_URL + '?multipleStatements=true');
+        // Safely append multipleStatements — handle URLs that already have query params
+        const url = process.env.MYSQL_URL;
+        const separator = url.includes('?') ? '&' : '?';
+        db = await mysql.createConnection(url + separator + 'multipleStatements=true');
     } else {
         db = await mysql.createConnection({
             host: process.env.DB_HOST || 'localhost',
@@ -44,6 +47,7 @@ async function migrate() {
 
 migrate().catch(err => {
     // Don't crash the whole deploy on migration error
-    console.error('⚠️  Migration warning:', err.message);
+    console.error('⚠️  Migration failed:', err.message);
+    console.error(err.stack);
     process.exit(0); // exit 0 so server.js still starts
 });
