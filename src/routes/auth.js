@@ -21,23 +21,25 @@ router.post('/register', async (req, res) => {
     if (!name || !email || !phone || !password || !role) {
         return res.status(422).json({
             error: 'VALIDATION_ERROR',
-            fields: {
-                general: 'Full name, email, phone, password and role are all required'
-            }
+            fields: { general: 'Full name, email, phone, password and role are all required' }
         });
     }
 
-    // Basic email format check
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return res.status(422).json({ error: 'VALIDATION_ERROR', fields: { email: 'Please enter a valid email address' } });
     }
 
-    // Password strength
     if (password.length < 8) {
         return res.status(422).json({ error: 'VALIDATION_ERROR', fields: { password: 'Password must be at least 8 characters' } });
     }
 
     try {
+        // Ensure OTP columns exist (safe to run multiple times)
+        await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code VARCHAR(10) NULL").catch(() => {});
+        await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires DATETIME NULL").catch(() => {});
+        await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(100) NULL").catch(() => {});
+        await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires DATETIME NULL").catch(() => {});
+
         const [existing] = await db.query(
             'SELECT id FROM users WHERE email = ? OR phone = ?',
             [email, phone]
@@ -49,7 +51,7 @@ router.post('/register', async (req, res) => {
         const hash = await bcrypt.hash(password, 10);
         const activeRole = role === 'admin' ? 'client' : role;
         const otp = generateOTP();
-        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
         const [result] = await db.query(
             `INSERT INTO users (full_name, email, phone, password_hash, role, active_role, is_verified, kyc_status, otp_code, otp_expires)
@@ -62,12 +64,10 @@ router.post('/register', async (req, res) => {
             await db.query('INSERT INTO freelancer_profiles (id) VALUES (?)', [userId]);
         }
 
-        // Send OTP email
         try {
             await sendOTP(email, otp, name);
         } catch (emailErr) {
             console.error('Email send failed:', emailErr.message);
-            // Don't block registration if email fails — log OTP for debugging
             console.log(`OTP for ${email}: ${otp}`);
         }
 
@@ -76,7 +76,7 @@ router.post('/register', async (req, res) => {
             success: true,
             token,
             user: { id: userId, name, email, role, active_role: activeRole, is_verified: 0, kyc_status: 'none' },
-            message: `Verification code sent to ${email}. Please verify your account.`
+            message: `Verification code sent to ${email}.`
         });
     } catch (err) {
         console.error(err);
