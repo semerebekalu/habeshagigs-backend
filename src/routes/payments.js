@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/db');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireKYC } = require('../middleware/auth');
 const { calculateFee } = require('../utils/feeCalculator');
 const { enqueueNotification } = require('../modules/notification/notificationService');
 const { recalculate: recalculateReputation } = require('../modules/reputation/reputationEngine');
 
-// POST /api/payments/initiate — fund escrow
-router.post('/initiate', authenticate, async (req, res) => {
+// POST /api/payments/initiate — fund escrow (KYC required)
+router.post('/initiate', authenticate, requireKYC, async (req, res) => {
     const { contract_id, amount, method } = req.body;
     if (!contract_id || !amount) return res.status(422).json({ error: 'VALIDATION_ERROR' });
     try {

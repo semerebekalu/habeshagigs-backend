@@ -741,13 +741,37 @@ async function viewOrCreateContract(proposalId, jobId, contractId) {
 
 async function updateProposal(id, status) {
   try {
-    await apiFetch(`/proposals/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
-    toast(`Proposal ${status}`, 'success');
+    const res = await apiFetch(`/proposals/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
     if (status === 'accepted') {
-      toast('Contract created! Redirecting...', 'success');
+      toast(`🎉 Proposal accepted! Escrow funded. Redirecting to contract...`, 'success');
+      setTimeout(() => {
+        if (res.contract_id) window.location.href = `/contract.html?id=${res.contract_id}`;
+        else loadProposals();
+      }, 1500);
+    } else {
+      toast(`Proposal ${status}`, 'success');
+      loadProposals();
     }
-    loadProposals();
-  } catch (err) { toast(err.message || 'Failed', 'error'); }
+  } catch (err) {
+    if (err.error === 'KYC_REQUIRED') {
+      const msg = err.kyc_status === 'pending'
+        ? 'Your identity verification is still under review. You cannot hire until approved.'
+        : 'You must verify your identity before hiring a freelancer.';
+      if (confirm(`🪪 ${msg}\n\nGo to verification page now?`)) {
+        window.location.href = '/verify.html';
+      }
+    } else if (err.error === 'EMAIL_VERIFICATION_REQUIRED') {
+      toast('Please verify your email address first.', 'error');
+    } else if (err.error === 'INSUFFICIENT_BALANCE') {
+      const needed = err.required ? err.required.toFixed(2) : '?';
+      const current = err.current_balance ? err.current_balance.toFixed(2) : '?';
+      if (confirm(`💳 Insufficient wallet balance.\n\nRequired: ${needed} ETB\nYour balance: ${current} ETB\n\nTop up your wallet now?`)) {
+        showTab('wallet');
+      }
+    } else {
+      toast(err.message || err.error || 'Failed', 'error');
+    }
+  }
 }
 
 async function loadWallet() {

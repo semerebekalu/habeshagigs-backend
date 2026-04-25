@@ -88,9 +88,14 @@ router.post('/submit', authenticate, kycUpload.fields([
     }
 });
 
-// GET /api/kyc/status/:userId — public endpoint, no auth required
-router.get('/status/:userId', async (req, res) => {
+// GET /api/kyc/status/:userId — authenticated, only self or admin can check
+router.get('/status/:userId', authenticate, async (req, res) => {
     try {
+        // Only allow users to check their own status, or admins to check anyone
+        const [[requestingUser]] = await db.query('SELECT role FROM users WHERE id = ?', [req.user.id]);
+        if (parseInt(req.params.userId) !== req.user.id && requestingUser?.role !== 'admin') {
+            return res.status(403).json({ error: 'FORBIDDEN', message: 'You can only view your own KYC status' });
+        }
         const [[user]] = await db.query('SELECT kyc_status, is_verified FROM users WHERE id = ?', [req.params.userId]);
         res.json(user || { kyc_status: 'none', is_verified: 0 });
     } catch (err) {

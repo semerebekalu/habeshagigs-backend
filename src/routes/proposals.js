@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/db');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireKYC, requireVerified } = require('../middleware/auth');
 const { enqueueNotification } = require('../modules/notification/notificationService');
+const { calculateFee } = require('../utils/feeCalculator');
 
-// POST /api/proposals
-router.post('/', authenticate, async (req, res) => {
+// POST /api/proposals — freelancer submits a proposal (must be email-verified)
+router.post('/', authenticate, requireVerified, async (req, res) => {
     const { job_id, cover_letter, bid_amount, delivery_days } = req.body;
     if (!job_id) return res.status(422).json({ error: 'VALIDATION_ERROR', fields: { job_id: 'Required' } });
     try {
@@ -100,37 +101,92 @@ router.get('/job/:jobId', authenticate, async (req, res) => {
     }
 });
 
-// PUT /api/proposals/:id/status
+// PUT /api/proposals/:id/status — client accepts/rejects (KYC required to accept)
 router.put('/:id/status', authenticate, async (req, res) => {
     const { status } = req.body;
     if (!['accepted', 'rejected', 'shortlisted'].includes(status)) {
         return res.status(422).json({ error: 'INVALID_STATUS' });
     }
     try {
+        // KYC required to accept (hire) a freelancer
+        if (status === 'accepted') {
+            const [[client]] = await db.query('SELECT kyc_status, is_verified, is_banned, is_suspended, wallet_balance FROM users WHERE id = ?', [req.user.id]);
+            if (!client) return res.status(404).json({ error: 'USER_NOT_FOUND' });
+            if (client.is_banned || client.is_suspended) return res.status(403).json({ error: 'ACCOUNT_BANNED' });
+            if (!client.is_verified) {
+                return res.status(403).json({
+                    error: 'EMAIL_VERIFICATION_REQUIRED',
+                    message: 'Please verify your email address before hiring a freelancer.'
+                });
+            }
+            if (client.kyc_status !== 'approved') {
+                return res.status(403).json({
+                    error: 'KYC_REQUIRED',
+                    message: client.kyc_status === 'pending'
+                        ? 'Your identity verification is under review. You cannot hire until approved.'
+                        : 'You must complete identity verification before hiring a freelancer. Go to your profile to submit your ID.',
+                    kyc_status: client.kyc_status
+                });
+            }
+        }
+
         await db.query('UPDATE proposals SET status = ? WHERE id = ?', [status, req.params.id]);
         const [[proposal]] = await db.query('SELECT * FROM proposals WHERE id = ?', [req.params.id]);
         if (!proposal) return res.status(404).json({ error: 'NOT_FOUND' });
 
         const [[job]] = await db.query('SELECT * FROM jobs WHERE id = ?', [proposal.job_id]);
 
-        // Auto-create contract when proposal is accepted
+        // Auto-create contract and REQUIRE escrow deposit when proposal is accepted
         let contract_id = null;
+        let escrow_funded = false;
         if (status === 'accepted' && job) {
-            // Check if contract already exists for this proposal
+            // Verify client owns this job
+            if (job.client_id !== req.user.id) {
+                return res.status(403).json({ error: 'FORBIDDEN', message: 'You do not own this job' });
+            }
+
+            // Check if contract already exists
             const [[existingContract]] = await db.query(
                 'SELECT id FROM contracts WHERE job_id = ? AND freelancer_id = ?',
                 [proposal.job_id, proposal.freelancer_id]
             );
+
             if (!existingContract) {
+                const bidAmount = parseFloat(proposal.bid_amount);
+                const { fee } = calculateFee(bidAmount);
+                const totalRequired = bidAmount + fee;
+
+                // Check client wallet balance — must have enough for full escrow
+                const [[clientWallet]] = await db.query('SELECT wallet_balance FROM users WHERE id = ?', [req.user.id]);
+                if (parseFloat(clientWallet.wallet_balance) < totalRequired) {
+                    // Revert proposal status
+                    await db.query('UPDATE proposals SET status = "pending" WHERE id = ?', [req.params.id]);
+                    return res.status(400).json({
+                        error: 'INSUFFICIENT_BALANCE',
+                        message: `You need ${totalRequired.toFixed(2)} ETB in your wallet to hire this freelancer (${bidAmount.toFixed(2)} ETB + ${fee.toFixed(2)} ETB platform fee). Please top up your wallet first.`,
+                        required: totalRequired,
+                        fee,
+                        current_balance: parseFloat(clientWallet.wallet_balance)
+                    });
+                }
+
+                // Create contract
                 const [contractResult] = await db.query(
                     `INSERT INTO contracts (job_id, client_id, freelancer_id, total_amount, platform_fee, escrow_balance, escrow_status, status)
-                     VALUES (?, ?, ?, ?, 0, 0, 'unfunded', 'active')`,
-                    [proposal.job_id, job.client_id, proposal.freelancer_id, proposal.bid_amount]
+                     VALUES (?, ?, ?, ?, ?, ?, 'funded', 'active')`,
+                    [proposal.job_id, job.client_id, proposal.freelancer_id, bidAmount, fee, bidAmount]
                 );
                 contract_id = contractResult.insertId;
-                // Update job status to in_progress
+
+                // Deduct from client wallet immediately
+                await db.query('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [totalRequired, req.user.id]);
+                await db.query(
+                    'INSERT INTO transactions (contract_id, user_id, type, amount, method, status) VALUES (?, ?, "escrow_fund", ?, "wallet", "completed")',
+                    [contract_id, req.user.id, totalRequired]
+                );
+
+                escrow_funded = true;
                 await db.query("UPDATE jobs SET status = 'in_progress' WHERE id = ?", [proposal.job_id]);
-                // Link contract to proposal
                 await db.query('UPDATE proposals SET contract_id = ? WHERE id = ?', [contract_id, req.params.id]);
             } else {
                 contract_id = existingContract.id;
@@ -141,11 +197,11 @@ router.put('/:id/status', authenticate, async (req, res) => {
         await enqueueNotification(proposal.freelancer_id, `proposal_${status}`, {
             title: status === 'accepted' ? '🎉 Proposal Accepted!' : `Proposal ${status}`,
             message: status === 'accepted'
-                ? `Your proposal for "${job?.title}" was accepted! A contract has been created. Go to your contracts to get started.`
+                ? `Your proposal for "${job?.title}" was accepted! Escrow has been funded. Go to your contracts to get started.`
                 : `Your proposal for "${job?.title}" was ${status}`
         });
 
-        res.json({ success: true, contract_id });
+        res.json({ success: true, contract_id, escrow_funded });
     } catch (err) {
         res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
     }

@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { db } = require('../config/db');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireKYC, requireVerified } = require('../middleware/auth');
 const { enqueueNotification } = require('../modules/notification/notificationService');
 
 // Multer for delivery uploads
@@ -75,8 +75,8 @@ router.put('/:id/submit', authenticate, async (req, res) => {
     res.json({ success: true });
 });
 
-// POST /api/milestones/:id/deliver — freelancer submits work
-router.post('/:id/deliver', authenticate, uploadDelivery.array('files', 5), async (req, res) => {
+// POST /api/milestones/:id/deliver — freelancer submits work (must be verified)
+router.post('/:id/deliver', authenticate, requireVerified, uploadDelivery.array('files', 5), async (req, res) => {
     try {
         const [[ms]] = await db.query('SELECT * FROM milestones WHERE id = ?', [req.params.id]);
         if (!ms) return res.status(404).json({ error: 'NOT_FOUND' });
@@ -84,6 +84,12 @@ router.post('/:id/deliver', authenticate, uploadDelivery.array('files', 5), asyn
         const [[contract]] = await db.query('SELECT * FROM contracts WHERE id = ?', [ms.contract_id]);
         if (!contract) return res.status(404).json({ error: 'CONTRACT_NOT_FOUND' });
         if (req.user.id !== contract.freelancer_id) return res.status(403).json({ error: 'FORBIDDEN' });
+        if (contract.escrow_status !== 'funded') {
+            return res.status(403).json({
+                error: 'ESCROW_NOT_FUNDED',
+                message: 'The client has not funded the escrow yet. Work cannot begin until payment is secured.'
+            });
+        }
 
         const files = (req.files || []).map(f => ({
             filename: f.originalname,
