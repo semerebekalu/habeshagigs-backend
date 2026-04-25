@@ -7,16 +7,22 @@ const bcrypt = require('bcrypt');
 const mysql = require('mysql2/promise');
 
 const ADMIN_EMAIL = 'admin@ethiogigs.com';
-const ADMIN_PASSWORD = 'Admin@2026';
+const ADMIN_PASSWORD = 'Admin@2026!';
 const ADMIN_NAME = 'Ethio Gigs Admin';
 
 async function seed() {
-    const db = await mysql.createConnection({
-        host: process.env.DB_HOST || 'localhost',
-        user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || '',
-        database: process.env.DB_NAME || 'habeshangigs'
-    });
+    let db;
+    if (process.env.MYSQL_URL) {
+        db = await mysql.createConnection(process.env.MYSQL_URL);
+    } else {
+        db = await mysql.createConnection({
+            host: process.env.DB_HOST || 'localhost',
+            port: process.env.DB_PORT || 3306,
+            user: process.env.DB_USER || 'root',
+            password: process.env.DB_PASSWORD || '',
+            database: process.env.DB_NAME || 'habeshangigs'
+        });
+    }
 
     const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [ADMIN_EMAIL]);
     if (existing.length > 0) {
@@ -32,19 +38,15 @@ async function seed() {
         [ADMIN_NAME, ADMIN_EMAIL, hash]
     );
 
-    console.log('');
-    console.log('🎉 Admin account created successfully!');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('  Email    : admin@ethiogigs.com');
-    console.log('  Password : Admin@2026');
+    console.log('🎉 Admin account created!');
+    console.log('  Email    :', ADMIN_EMAIL);
+    console.log('  Password :', ADMIN_PASSWORD);
     console.log('  User ID  :', result.insertId);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('');
 
     await db.end();
 }
 
 seed().catch(err => {
-    console.error('❌ Seed failed:', err.message);
-    process.exit(1);
+    console.error('⚠️  Seed warning:', err.message);
+    process.exit(0);
 });
