@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile — Ethio Gigs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ── Cover & Avatar ── */
+    .profile-cover-wrap { position:relative; width:100%; height:220px; background:linear-gradient(135deg,#1E3A8A 0%,#0f766e 60%,#14B8A6 100%); overflow:hidden; cursor:pointer; }
+    .profile-cover-wrap img.cover-img { width:100%;height:100%;object-fit:cover;display:block; }
+    .cover-upload-overlay { position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;opacity:0;transition:.2s;color:#fff;font-weight:600;font-size:.9rem;gap:8px; }
+    .profile-cover-wrap:hover .cover-upload-overlay { opacity:1; }
+    .profile-header-row { max-width:900px;margin:0 auto;padding:0 24px;position:relative; }
+    .avatar-wrap { position:absolute;top:-52px;left:24px;width:104px;height:104px;border-radius:50%;border:4px solid #fff;background:#e2e8f0;overflow:hidden;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.18); }
+    .avatar-wrap img { width:100%;height:100%;object-fit:cover; }
+    .avatar-upload-overlay { position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;opacity:0;transition:.2s;border-radius:50%; }
+    .avatar-wrap:hover .avatar-upload-overlay { opacity:1; }
+    .avatar-upload-overlay span { color:#fff;font-size:1.4rem; }
+    .profile-meta-row { padding:60px 24px 0;max-width:900px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px; }
+    .profile-name { font-size:1.6rem;font-weight:800;color:#1e293b;margin-bottom:2px; }
+    .profile-title-text { color:#64748b;font-size:1rem;margin-bottom:4px; }
+    .profile-location { color:#94a3b8;font-size:.85rem; }
+    .profile-action-btns { display:flex;gap:10px;flex-wrap:wrap; }
+
+    /* ── Tabs ── */
+    .profile-tabs { border-bottom:2px solid #e2e8f0;max-width:900px;margin:20px auto 0;padding:0 24px;display:flex;gap:0; }
+    .ptab { padding:12px 20px;font-weight:600;font-size:.92rem;color:#64748b;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:.15s; }
+    .ptab.active { color:#1E3A8A;border-bottom-color:#1E3A8A; }
+    .ptab:hover { color:#1E3A8A; }
+
+    /* ── Layout ── */
+    .profile-body { max-width:900px;margin:24px auto;padding:0 24px;display:grid;grid-template-columns:1fr 300px;gap:20px; }
+    @media(max-width:700px){ .profile-body{grid-template-columns:1fr;} }
+    .profile-card { background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;margin-bottom:16px; }
+    .profile-card h3 { font-size:1.05rem;font-weight:700;margin-bottom:14px;color:#1e293b; }
+
+    /* ── Skills ── */
+    .skill-pill { display:inline-flex;align-items:center;gap:6px;background:#eff6ff;color:#1d4ed8;border-radius:20px;padding:5px 14px;font-size:.82rem;font-weight:600;margin:4px; }
+    .skill-pill .endorse-count { background:#dbeafe;border-radius:10px;padding:1px 7px;font-size:.75rem; }
+
+    /* ── Portfolio grid ── */
+    .portfolio-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px; }
+    .portfolio-item { border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;aspect-ratio:4/3;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:2rem;cursor:pointer;transition:.2s; }
+    .portfolio-item:hover { transform:scale(1.03);box-shadow:0 4px 16px rgba(0,0,0,.1); }
+    .portfolio-item img { width:100%;height:100%;object-fit:cover; }
+
+    /* ── Reviews ── */
+    .review-item { border-bottom:1px solid #f1f5f9;padding:14px 0; }
+    .review-item:last-child { border-bottom:none; }
+    .review-stars { color:#FBBF24;font-size:1rem;margin-bottom:4px; }
+    .review-text { color:#475569;font-size:.88rem;line-height:1.6; }
+    .review-author { font-size:.8rem;color:#94a3b8;margin-top:6px; }
+
+    /* ── Sidebar cards ── */
+    .stat-row { display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:.88rem; }
+    .stat-row:last-child { border-bottom:none; }
+    .stat-row .label { color:#64748b; }
+    .stat-row .value { font-weight:700;color:#1e293b; }
+
+    /* ── Level badge colors ── */
+    .lvl-bronze { background:#fef3c7;color:#92400e; }
+    .lvl-silver { background:#f1f5f9;color:#475569; }
+    .lvl-gold { background:#fef9c3;color:#854d0e; }
+    .lvl-platinum { background:#ede9fe;color:#5b21b6; }
+    .lvl-diamond { background:#ecfeff;color:#0e7490; }
+
+    /* ── Upload inputs hidden ── */
+    #coverInput, #avatarInput { display:none; }
+
+    /* ── Own profile edit banner ── */
+    .own-profile-bar { background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar" id="navbar">
+  <div class="nav-container">
+    <a href="/" class="logo">Ethio<span>Gigs</span></a>
+    <div class="nav-links" id="navLinks">
+      <a href="/">Home</a>
+      <a href="/marketplace.html">Marketplace</a>
+      <a href="/dashboard.html" class="auth-only hidden">Dashboard</a>
+    </div>
+    <div class="nav-actions">
+      <button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button>
+      <div class="notif-bell auth-only hidden" id="notifBell">🔔 <span class="notif-badge hidden" id="notifBadge">0</span></div>
+      <a href="/login.html" class="btn btn-outline guest-only">Login</a>
+      <a href="/register.html" class="btn btn-primary guest-only">Register</a>
+      <button class="btn btn-outline auth-only hidden" id="logoutBtn">Logout</button>
+    </div>
+    <button class="hamburger" id="hamburger">☰</button>
+  </div>
+</nav>
+
+<!-- Hidden file inputs -->
+<input type="file" id="coverInput" accept="image/*" onchange="uploadCover(this)" />
+<input type="file" id="avatarInput" accept="image/*" onchange="uploadAvatar(this)" />
+
+<!-- Cover photo -->
+<div class="profile-cover-wrap" id="coverWrap" onclick="triggerCoverUpload()">
+  <img id="coverImg" src="" alt="Cover" style="display:none;" />
+  <div id="coverPlaceholder" style="width:100%;height:100%;background:linear-gradient(135deg,#1E3A8A 0%,#0f766e 60%,#14B8A6 100%);"></div>
+  <div class="cover-upload-overlay" id="coverOverlay" style="display:none;">📷 Change Cover Photo</div>
+</div>
+
+<!-- Avatar overlapping cover -->
+<div class="profile-header-row">
+  <div class="avatar-wrap" id="avatarWrap" onclick="triggerAvatarUpload()">
+    <img id="avatarImg" src="" alt="Avatar" />
+    <div class="avatar-upload-overlay" id="avatarOverlay" style="display:none;"><span>📷</span></div>
+  </div>
+</div>
+
+<!-- Name / title / actions -->
+<div class="profile-meta-row">
+  <div>
+    <div class="profile-name" id="profileName">Loading...</div>
+    <div class="profile-title-text" id="profileTitleText"></div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;">
+      <span id="verifiedBadge" class="hidden" style="background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;">✓ Verified</span>
+      <span id="levelBadge" style="padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;"></span>
+      <span id="usernameBadge" style="color:#0d9488;font-weight:600;font-size:.85rem;"></span>
+    </div>
+    <div class="profile-location" id="profileLocation" style="margin-top:4px;"></div>
+  </div>
+  <div class="profile-action-btns" id="actionBtns">
+    <!-- Filled by JS -->
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="profile-tabs">
+  <div class="ptab active" onclick="switchTab('about', this)">About</div>
+  <div class="ptab" onclick="switchTab('skills', this)">Skills</div>
+  <div class="ptab" onclick="switchTab('portfolio', this)">Portfolio</div>
+  <div class="ptab" onclick="switchTab('reviews', this)">Reviews</div>
+</div>
+
+<!-- Body -->
+<div class="profile-body">
+  <!-- Main column -->
+  <div>
+    <!-- Own profile edit bar -->
+    <div class="own-profile-bar hidden" id="ownProfileBar">
+      <span style="font-size:.9rem;color:#1d4ed8;font-weight:600;">✏️ This is your public profile</span>
+      <a href="/dashboard.html#profile" class="btn btn-sm btn-primary">Edit Profile</a>
+    </div>
+
+    <!-- About tab -->
+    <div id="tab-about">
+      <div class="profile-card">
+        <h3>About</h3>
+        <p id="bioText" style="color:#475569;line-height:1.8;font-size:.93rem;">No bio yet.</p>
+        <p id="bioAmText" style="color:#64748b;font-size:.88rem;margin-top:10px;font-family:'Noto Sans Ethiopic',sans-serif;display:none;"></p>
+      </div>
+    </div>
+
+    <!-- Skills tab -->
+    <div id="tab-skills" class="hidden">
+      <div class="profile-card">
+        <h3>Skills</h3>
+        <div id="skillsList" style="margin-top:4px;">No skills listed.</div>
+      </div>
+    </div>
+
+    <!-- Portfolio tab -->
+    <div id="tab-portfolio" class="hidden">
+      <div class="profile-card">
+        <h3>Portfolio</h3>
+        <div class="portfolio-grid" id="portfolioGrid">
+          <div style="color:#94a3b8;font-size:.88rem;">No portfolio items yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reviews tab -->
+    <div id="tab-reviews" class="hidden">
+      <div class="profile-card">
+        <h3>Reviews</h3>
+        <div id="reviewsList"><div style="color:#94a3b8;font-size:.88rem;">No reviews yet.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div>
+    <!-- Stats card -->
+    <div class="profile-card">
+      <h3>Stats</h3>
+      <div class="stat-row"><span class="label">⭐ Rating</span><span class="value" id="sideRating">—</span></div>
+      <div class="stat-row"><span class="label">✅ Completed</span><span class="value" id="sideCompleted">0</span></div>
+      <div class="stat-row"><span class="label">📋 Completion Rate</span><span class="value" id="sideCompletion">—</span></div>
+      <div class="stat-row"><span class="label">⚡ Response Rate</span><span class="value" id="sideResponse">—</span></div>
+      <div class="stat-row"><span class="label">💰 Hourly Rate</span><span class="value" id="sideRate">—</span></div>
+      <div class="stat-row"><span class="label">🟢 Availability</span><span class="value" id="sideAvail">—</span></div>
+    </div>
+
+    <!-- Badges card -->
+    <div class="profile-card" id="badgesCard" style="display:none;">
+      <h3>Skill Badges</h3>
+      <div id="badgesList"></div>
+    </div>
+
+    <!-- Hire / Message card (shown to others) -->
+    <div class="profile-card hidden" id="hireCard">
+      <button class="btn btn-primary btn-full" id="hireBtn" style="margin-bottom:10px;">💼 Hire Now</button>
+      <button class="btn btn-outline btn-full" id="msgBtn">💬 Send Message</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif-panel hidden" id="notifPanel">
+  <div class="notif-header"><h4>Notifications</h4><button onclick="markAllRead()">Mark all read</button></div>
+  <div id="notifList"></div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/i18n.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const profileId = params.get('id');
+const profileUsername = params.get('username');
+const currentUser = getUser();
+let profileData = null;
+let isOwnProfile = false;
+
+async function loadProfile() {
+  try {
+    let url = '';
+    if (profileId) url = `/users/${profileId}`;
+    else if (profileUsername) url = `/users/search?username=${encodeURIComponent(profileUsername)}`;
+    else if (currentUser) url = `/users/${currentUser.id}`;
+    else { window.location.href = '/login.html'; return; }
+
+    const user = await apiFetch(url);
+    // If search returned a user, redirect to id-based URL for consistency
+    if (profileUsername && user.id) {
+      history.replaceState(null, '', `/profile.html?id=${user.id}`);
+    }
+
+    profileData = user;
+    isOwnProfile = currentUser && currentUser.id === user.id;
+
+    renderProfile(user);
+  } catch (err) {
+    document.getElementById('profileName').textContent = 'Profile not found';
+  }
+}
+
+function renderProfile(user) {
+  const profile = user.profile || {};
+  const level = profile.reputation_level || 'bronze';
+
+  // Page title
+  document.title = `${user.full_name} — Ethio Gigs`;
+
+  // Cover photo
+  if (profile.cover_photo_url) {
+    const img = document.getElementById('coverImg');
+    img.src = profile.cover_photo_url;
+    img.style.display = 'block';
+    document.getElementById('coverPlaceholder').style.display = 'none';
+  }
+
+  // Avatar
+  const avatarImg = document.getElementById('avatarImg');
+  avatarImg.src = profile.profile_photo_url
+    || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=1E3A8A&color=fff&size=200`;
+
+  // Name / title / badges
+  document.getElementById('profileName').textContent = user.full_name;
+  document.getElementById('profileTitleText').textContent = profile.title || '';
+  if (user.username) document.getElementById('usernameBadge').textContent = `@${user.username}`;
+  if (user.is_verified) document.getElementById('verifiedBadge').classList.remove('hidden');
+
+  const lvlBadge = document.getElementById('levelBadge');
+  lvlBadge.textContent = level.charAt(0).toUpperCase() + level.slice(1);
+  lvlBadge.className = `lvl-${level}`;
+  lvlBadge.style.cssText += ';padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:700;';
+
+  // Sidebar stats
+  document.getElementById('sideRating').textContent = profile.avg_rating ? `${parseFloat(profile.avg_rating).toFixed(1)} ⭐` : '—';
+  document.getElementById('sideCompleted').textContent = profile.total_completed || 0;
+  document.getElementById('sideCompletion').textContent = profile.completion_rate ? `${profile.completion_rate}%` : '—';
+  document.getElementById('sideResponse').textContent = profile.response_rate ? `${profile.response_rate}%` : '—';
+  document.getElementById('sideRate').textContent = profile.hourly_rate ? `${profile.hourly_rate} ETB/hr` : 'Negotiable';
+  const availMap = { available: '🟢 Available', busy: '🟡 Busy', unavailable: '🔴 Unavailable' };
+  document.getElementById('sideAvail').textContent = availMap[profile.availability_status] || '—';
+
+  // Bio
+  if (profile.bio) {
+    document.getElementById('bioText').textContent = profile.bio;
+  }
+  if (profile.bio_am) {
+    const amEl = document.getElementById('bioAmText');
+    amEl.textContent = profile.bio_am;
+    amEl.style.display = 'block';
+  }
+
+  // Skills
+  if (user.skills && user.skills.length) {
+    document.getElementById('skillsList').innerHTML = user.skills.map(s => `
+      <span class="skill-pill">
+        ${s.name}
+        ${s.endorsement_count > 0 ? `<span class="endorse-count">+${s.endorsement_count}</span>` : ''}
+      </span>`).join('');
+  }
+
+  // Portfolio
+  if (user.portfolio && user.portfolio.length) {
+    document.getElementById('portfolioGrid').innerHTML = user.portfolio.map(p => {
+      if (p.item_type === 'image' && p.url) {
+        return `<div class="portfolio-item" title="${p.title || ''}"><img src="${p.url}" alt="${p.title || 'Portfolio'}" /></div>`;
+      }
+      if (p.item_type === 'link') {
+        return `<a href="${p.url}" target="_blank" class="portfolio-item" title="${p.title || p.url}">🔗</a>`;
+      }
+      return `<div class="portfolio-item" title="${p.title || 'Document'}">📄</div>`;
+    }).join('');
+  }
+
+  // Reviews
+  loadReviews(user.id);
+
+  // Badges
+  loadBadges(user.id);
+
+  // Own profile controls
+  if (isOwnProfile) {
+    document.getElementById('ownProfileBar').classList.remove('hidden');
+    document.getElementById('coverOverlay').style.display = 'flex';
+    document.getElementById('avatarOverlay').style.display = 'flex';
+    document.getElementById('actionBtns').innerHTML = `
+      <a href="/dashboard.html" class="btn btn-primary">✏️ Edit Profile</a>
+      <button class="btn btn-outline" onclick="copyProfileLink()">🔗 Share</button>`;
+  } else {
+    // Show hire/message buttons to others
+    document.getElementById('hireCard').classList.remove('hidden');
+    document.getElementById('hireBtn').onclick = () => window.location.href = `/marketplace.html`;
+    document.getElementById('msgBtn').onclick = () => startConversation(user.id);
+    document.getElementById('actionBtns').innerHTML = `
+      <button class="btn btn-primary" onclick="startConversation(${user.id})">💬 Message</button>
+      <button class="btn btn-outline" onclick="saveFavorite(${user.id})">❤️ Save</button>`;
+  }
+}
+
+async function loadReviews(userId) {
+  try {
+    const reviews = await apiFetch(`/users/${userId}/reviews`);
+    if (!reviews.length) return;
+    document.getElementById('reviewsList').innerHTML = reviews.map(r => `
+      <div class="review-item">
+        <div class="review-stars">${'⭐'.repeat(r.rating)}</div>
+        <div class="review-text">"${r.comment || 'Great work!'}"</div>
+        <div class="review-author">— ${r.reviewer_name} · ${new Date(r.created_at).toLocaleDateString()}</div>
+      </div>`).join('');
+  } catch {}
+}
+
+async function loadBadges(userId) {
+  try {
+    const badges = await apiFetch(`/skill-tests/badges/${userId}`);
+    if (!badges.length) return;
+    document.getElementById('badgesCard').style.display = 'block';
+    document.getElementById('badgesList').innerHTML = badges.map(b => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
+        <span style="font-size:1.2rem;">🏅</span>
+        <span style="font-weight:600;font-size:.88rem;">${b.skill_name}</span>
+      </div>`).join('');
+  } catch {}
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.add('hidden'));
+  document.getElementById('tab-' + name)?.classList.remove('hidden');
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── Upload handlers ──
+function triggerCoverUpload() {
+  if (!isOwnProfile) return;
+  document.getElementById('coverInput').click();
+}
+function triggerAvatarUpload() {
+  if (!isOwnProfile) return;
+  document.getElementById('avatarInput').click();
+}
+
+async function uploadCover(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('cover', file);
+  try {
+    const res = await fetch(`${API}/users/${currentUser.id}/cover`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (data.url) {
+      const img = document.getElementById('coverImg');
+      img.src = data.url;
+      img.style.display = 'block';
+      document.getElementById('coverPlaceholder').style.display = 'none';
+      toast('Cover photo updated!', 'success');
+    }
+  } catch { toast('Upload failed', 'error'); }
+}
+
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('avatar', file);
+  try {
+    const res = await fetch(`${API}/users/${currentUser.id}/avatar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (data.url) {
+      document.getElementById('avatarImg').src = data.url;
+      toast('Profile photo updated!', 'success');
+    }
+  } catch { toast('Upload failed', 'error'); }
+}
+
+// ── Actions ──
+async function startConversation(userId) {
+  if (!isLoggedIn()) { window.location.href = '/login.html'; return; }
+  try {
+    const data = await apiFetch('/chat/conversations/start', { method: 'POST', body: JSON.stringify({ other_user_id: userId }) });
+    window.location.href = `/chat.html?conversation=${data.conversation_id}`;
+  } catch { toast('Could not start conversation', 'error'); }
+}
+
+async function saveFavorite(userId) {
+  if (!isLoggedIn()) { window.location.href = '/login.html'; return; }
+  try {
+    await apiFetch(`/users/favorites/${userId}`, { method: 'POST' });
+    toast('Saved to favorites!', 'success');
+  } catch { toast('Could not save', 'error'); }
+}
+
+function copyProfileLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => toast('Profile link copied!', 'success'));
+}
+
+loadProfile();
+</script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+ALTER TABLE freelancer_profiles ADD COLUMN IF NOT EXISTS cover_photo_url VARCHAR(500) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_photo_url VARCHAR(500) NULL;

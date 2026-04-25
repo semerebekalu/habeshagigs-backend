@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post a Job — Ethio Gigs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<nav class="navbar"><div class="nav-container"><a href="/" class="logo">Ethio<span>Gigs</span></a><div class="nav-links"><a href="/">Home</a><a href="/marketplace.html">Marketplace</a><a href="/dashboard.html">Dashboard</a></div><div class="nav-actions"><button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button><button class="btn btn-outline" id="logoutBtn">Logout</button></div></div></nav>
+
+<div style="max-width:680px;margin:48px auto;padding:0 20px;">
+  <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:8px;color:var(--blue);">Post a Job</h2>
+  <p style="color:var(--muted);margin-bottom:32px;">Describe your project and find the perfect freelancer</p>
+  <div class="table-card" style="padding:32px;">
+    <div id="formError" class="form-error hidden"></div>
+    <div class="form-group"><label>Job Title *</label><input type="text" id="jobTitle" placeholder="e.g. Build a React website" /></div>
+    <div class="form-group"><label>Description *</label><textarea id="jobDesc" rows="5" placeholder="Describe what you need in detail..."></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group"><label>Min Budget (ETB)</label><input type="number" id="budgetMin" placeholder="500" /></div>
+      <div class="form-group"><label>Max Budget (ETB)</label><input type="number" id="budgetMax" placeholder="5000" /></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group"><label>Project Type</label><select id="projectType"><option value="fixed">Fixed Price</option><option value="hourly">Hourly</option></select></div>
+      <div class="form-group"><label>Deadline</label><input type="date" id="deadline" /></div>
+    </div>
+
+    <!-- Team option -->
+    <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin-bottom:8px;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;">
+        <input type="checkbox" id="lookingForTeam" onchange="toggleTeamOption()" style="width:18px;height:18px;accent-color:var(--blue);" />
+        <div>
+          <div>👥 Looking for a Team</div>
+          <div style="font-weight:400;font-size:0.82rem;color:var(--muted);">Check this if you want multiple freelancers to collaborate on this project</div>
+        </div>
+      </label>
+      <div id="teamSizeOption" class="hidden" style="margin-top:12px;">
+        <div class="form-group" style="margin:0;"><label>Team Size Needed</label><input type="number" id="teamSize" min="2" max="10" value="2" placeholder="e.g. 3" /></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px;">
+      <button class="btn btn-outline" onclick="generateDesc()">🤖 AI Generate Description</button>
+      <button class="btn btn-primary" onclick="postJob()">Post Job</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/i18n.js"></script>
+<script>
+if (!isLoggedIn()) window.location.href = '/login.html';
+// Only clients can post jobs
+const _pjUser = getUser();
+if (_pjUser && (_pjUser.active_role === 'freelancer' || (_pjUser.role === 'freelancer' && _pjUser.active_role !== 'client'))) {
+    window.location.href = '/dashboard.html';
+}
+
+async function postJob() {
+  const title = document.getElementById('jobTitle').value;
+  const description = document.getElementById('jobDesc').value;
+  const budget_min = document.getElementById('budgetMin').value;
+  const budget_max = document.getElementById('budgetMax').value;
+  const project_type = document.getElementById('projectType').value;
+  const deadline = document.getElementById('deadline').value;
+  const looking_for_team = document.getElementById('lookingForTeam').checked;
+  const team_size = document.getElementById('teamSize')?.value || 1;
+  const errEl = document.getElementById('formError');
+  errEl.classList.add('hidden');
+  if (!title || !description) { errEl.textContent = 'Title and description are required.'; errEl.classList.remove('hidden'); return; }
+  try {
+    const data = await apiFetch('/jobs', { method: 'POST', body: JSON.stringify({ title, description, budget_min, budget_max, project_type, deadline, looking_for_team, team_size: parseInt(team_size) }) });
+    toast('Job posted successfully!', 'success');
+    setTimeout(() => window.location.href = '/dashboard.html', 1200);
+  } catch (err) { errEl.textContent = err.message || 'Failed to post job.'; errEl.classList.remove('hidden'); }
+}
+
+function toggleTeamOption() {
+  const checked = document.getElementById('lookingForTeam').checked;
+  document.getElementById('teamSizeOption').classList.toggle('hidden', !checked);
+}
+
+async function generateDesc() {
+  const title = document.getElementById('jobTitle').value;
+  const budget_min = document.getElementById('budgetMin').value;
+  const budget_max = document.getElementById('budgetMax').value;
+  const project_type = document.getElementById('projectType').value;
+
+  if (!title) { toast('Enter a job title first', 'error'); return; }
+
+  const btn = event.target;
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  try {
+    const data = await apiFetch('/ai/generate-job', {
+      method: 'POST',
+      body: JSON.stringify({ title, budget_min, budget_max, project_type })
+    });
+    document.getElementById('jobDesc').value = data.description;
+    toast('Description generated!', 'success');
+  } catch (err) {
+    toast('Generation failed. Try again.', 'error');
+  } finally {
+    btn.textContent = '🤖 AI Generate Description';
+    btn.disabled = false;
+  }
+}
+
+// Pre-fill from template if ?template=X in URL
+async function loadTemplate() {
+  const params = new URLSearchParams(window.location.search);
+  const templateId = params.get('template');
+  if (!templateId) return;
+  try {
+    const t = await apiFetch(`/contract-templates/${templateId}`);
+    const milestones = Array.isArray(t.default_milestones) ? t.default_milestones : JSON.parse(t.default_milestones || '[]');
+    const deliverables = Array.isArray(t.default_deliverables) ? t.default_deliverables : JSON.parse(t.default_deliverables || '[]');
+    document.getElementById('jobTitle').value = t.name;
+    document.getElementById('budgetMin').value = t.price_range_min;
+    document.getElementById('budgetMax').value = t.price_range_max;
+    document.getElementById('jobDesc').value =
+      `${t.description}\n\nDeliverables:\n${deliverables.map(d => `• ${d}`).join('\n')}\n\nMilestones:\n${milestones.map((m, i) => `${i+1}. ${m.title} (${m.percent}%)`).join('\n')}`;
+
+    // Set deadline based on estimated days
+    if (t.estimated_days) {
+      const d = new Date();
+      d.setDate(d.getDate() + t.estimated_days);
+      document.getElementById('deadline').value = d.toISOString().split('T')[0];
+    }
+    toast(`Template "${t.name}" loaded!`, 'success');
+  } catch {}
+}
+
+loadTemplate();
+</script>
+</body>
+</html>

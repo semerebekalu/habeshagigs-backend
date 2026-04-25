@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contract — Ethio Gigs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .contract-wrap { max-width: 860px; margin: 32px auto; padding: 0 20px; }
+    .contract-doc { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px; margin-bottom: 20px; box-shadow: var(--shadow); }
+    .contract-header { text-align: center; border-bottom: 2px solid var(--blue); padding-bottom: 24px; margin-bottom: 28px; }
+    .contract-logo { font-size: 1.6rem; font-weight: 800; color: var(--blue); margin-bottom: 4px; }
+    .contract-logo span { color: var(--teal); }
+    .contract-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
+    .contract-subtitle { color: var(--muted); font-size: 0.88rem; }
+    .contract-section { margin-bottom: 24px; }
+    .contract-section h4 { font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .contract-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .party-box { background: var(--bg); border-radius: 8px; padding: 16px; }
+    .party-role { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); margin-bottom: 6px; }
+    .party-name { font-weight: 700; font-size: 1rem; margin-bottom: 2px; }
+    .party-email { color: var(--muted); font-size: 0.85rem; }
+    .terms-list { list-style: none; padding: 0; }
+    .terms-list li { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; line-height: 1.6; display: flex; gap: 10px; }
+    .terms-list li:last-child { border-bottom: none; }
+    .terms-list li::before { content: '§'; color: var(--blue); font-weight: 700; flex-shrink: 0; }
+    .sig-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 32px; }
+    .sig-box { border: 2px solid var(--border); border-radius: 10px; padding: 20px; text-align: center; transition: all .2s; }
+    .sig-box.signed { border-color: #16a34a; background: #f0fdf4; }
+    .sig-box.pending { border-color: var(--gold); background: #fefce8; }
+    .sig-role { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+    .sig-name { font-weight: 700; margin-bottom: 4px; }
+    .sig-status { font-size: 0.82rem; margin-bottom: 12px; }
+    .sig-date { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
+    .sig-canvas-wrap { border: 1px dashed var(--border); border-radius: 8px; background: #fafafa; margin-bottom: 10px; position: relative; }
+    canvas { display: block; cursor: crosshair; border-radius: 8px; }
+    .sig-typed { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 1.1rem; font-family: 'Georgia', serif; text-align: center; outline: none; }
+    .sig-typed:focus { border-color: var(--teal); }
+    .sig-tabs { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .sig-tab { flex: 1; padding: 6px; border: none; background: none; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--muted); transition: all .15s; }
+    .sig-tab.active { background: var(--blue); color: #fff; }
+    .escrow-bar { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 20px; }
+    .escrow-track { background: var(--bg); border-radius: 8px; height: 10px; overflow: hidden; margin: 10px 0 6px; }
+    .escrow-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--blue)); border-radius: 8px; transition: width .5s; }
+    .milestone-step { position: relative; margin-bottom: 16px; padding-left: 28px; }
+    .milestone-step::before { content: ''; position: absolute; left: 8px; top: 0; bottom: -16px; width: 2px; background: var(--border); }
+    .milestone-step:last-child::before { display: none; }
+    .ms-dot { position: absolute; left: 0; top: 14px; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); background: var(--card); z-index: 1; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; }
+    .ms-dot.done { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .ms-dot.active { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 0 0 4px rgba(30,58,138,.15); }
+    .ms-dot.submitted { background: var(--gold); border-color: var(--gold); color: #fff; }
+    .ms-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .ms-box.active { border-color: var(--blue); background: #eff6ff; }
+    .ms-box.done { opacity: .8; }
+    .ms-box.submitted { border-color: var(--gold); background: #fefce8; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal-box { background: var(--card); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 480px; box-shadow: var(--shadow-lg); }
+    @media (max-width: 600px) { .contract-parties, .sig-section { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="/" class="logo">Ethio<span>Gigs</span></a>
+    <div class="nav-links"><a href="/dashboard.html">Dashboard</a></div>
+    <div class="nav-actions">
+      <div class="notif-bell" id="notifBell">🔔 <span class="notif-badge hidden" id="notifBadge">0</span></div>
+      <button class="btn btn-outline" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Deliver Work Modal -->
+<div class="modal-overlay hidden" id="deliverModal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:16px;">📦 Submit Work</h3>
+    <p style="color:var(--muted);font-size:0.88rem;margin-bottom:16px;">Upload your deliverables and describe what you've completed. At least one file or a detailed message is required as proof of delivery.</p>
+    <div class="form-group"><label>Delivery Message <span style="color:#dc2626;">*</span></label><textarea id="deliverMessage" rows="4" placeholder="Describe exactly what you've delivered, what was completed, and any instructions for the client..."></textarea></div>
+    <div class="form-group">
+      <label>Attach Deliverable Files <span style="color:var(--muted);font-weight:400;">(up to 5 files, 50MB each)</span></label>
+      <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;background:var(--bg);" onclick="document.getElementById('deliverFiles').click()">
+        <div style="font-size:2rem;margin-bottom:6px;">📎</div>
+        <div style="font-weight:600;font-size:0.9rem;">Click to attach files</div>
+        <div style="color:var(--muted);font-size:0.8rem;margin-top:4px;">Images, documents, zip files, source code...</div>
+        <input type="file" id="deliverFiles" multiple style="display:none;" onchange="showFileList(this)" />
+      </div>
+      <div id="fileList" style="margin-top:8px;"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-primary" onclick="submitDelivery()">Submit Work</button>
+      <button class="btn btn-outline" onclick="document.getElementById('deliverModal').classList.add('hidden')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Revision Modal -->
+<div class="modal-overlay hidden" id="revisionModal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:16px;">🔄 Request Revision</h3>
+    <div class="form-group"><label>Feedback</label><textarea id="revisionFeedback" rows="4" placeholder="Explain what needs to be changed..."></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-danger" onclick="submitRevision()">Request Revision</button>
+      <button class="btn btn-outline" onclick="document.getElementById('revisionModal').classList.add('hidden')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif-panel hidden" id="notifPanel">
+  <div class="notif-header"><h4>Notifications</h4><button onclick="markAllRead()">Mark all read</button></div>
+  <div id="notifList"></div>
+</div>
+
+<div class="contract-wrap" id="contractWrap">
+  <div class="loading-spinner" style="padding:60px;text-align:center;">Loading contract...</div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/i18n.js"></script>
+<script>
+if (!isLoggedIn()) window.location.href = '/login.html';
+const user = getUser();
+const params = new URLSearchParams(window.location.search);
+const contractId = params.get('id');
+if (!contractId) window.location.href = '/dashboard.html';
+
+let contractData = null;
+let currentMilestoneId = null;
+let currentDeliveryId = null;
+let sigMode = 'draw'; // 'draw' or 'type'
+let isDrawing = false;
+let canvas, ctx;
+
+async function loadContract() {
+  try {
+    const data = await apiFetch(`/contracts/${contractId}/progress`);
+    contractData = data;
+    const { contract, milestones, progress_percent, total_milestones, completed_milestones } = data;
+    const isClient = user.id === contract.client_id;
+    const isFreelancer = user.id === contract.freelancer_id;
+    const bothSigned = contract.client_signed && contract.freelancer_signed;
+    const iSigned = isClient ? contract.client_signed : contract.freelancer_signed;
+    const otherSigned = isClient ? contract.freelancer_signed : contract.client_signed;
+
+    // Fetch party details
+    const [clientData, freelancerData] = await Promise.all([
+      apiFetch(`/users/${contract.client_id}`).catch(() => ({})),
+      apiFetch(`/users/${contract.freelancer_id}`).catch(() => ({}))
+    ]);
+
+    const escrowPct = contract.total_amount > 0
+      ? Math.round(((contract.total_amount - (contract.escrow_balance || 0)) / contract.total_amount) * 100)
+      : 0;
+
+    document.getElementById('contractWrap').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+        <div>
+          <h2 style="font-size:1.4rem;font-weight:800;">Contract #${contract.id}</h2>
+          <span class="status status-${contract.status === 'active' ? 'active' : contract.status === 'completed' ? 'completed' : 'disputed'}">${contract.status}</span>
+        </div>
+        <a href="/dashboard.html" class="btn btn-outline btn-sm">← Dashboard</a>
+      </div>
+
+      ${!contract.client_signed || !contract.freelancer_signed ? `
+      <!-- SIGNING REQUIRED BANNER -->
+      <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1px solid #bfdbfe;border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div style="font-size:2rem;">✍️</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:1rem;margin-bottom:4px;">Digital Signature Required</div>
+          <div style="color:var(--muted);font-size:0.88rem;">Both parties must sign this contract before work begins. ${iSigned ? 'You have signed. Waiting for the other party.' : 'Please review the terms and sign below.'}</div>
+        </div>
+        ${!iSigned ? `<button class="btn btn-primary" onclick="scrollToSign()">Sign Now ↓</button>` : '<span style="color:#16a34a;font-weight:700;">✅ You signed</span>'}
+      </div>` : ''}
+
+      <!-- CONTRACT DOCUMENT -->
+      <div class="contract-doc" id="contractDocument">
+        <div class="contract-header">
+          <div class="contract-logo">Ethio<span>Gigs</span></div>
+          <div class="contract-title">Freelance Service Agreement</div>
+          <div class="contract-subtitle">Contract #${String(contract.id).padStart(6,'0')} · Created ${new Date(contract.created_at).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</div>
+        </div>
+
+        <div class="contract-section">
+          <h4>Parties</h4>
+          <div class="contract-parties">
+            <div class="party-box">
+              <div class="party-role">Client</div>
+              <div class="party-name">${clientData.full_name || 'Client'}</div>
+              <div class="party-email">${clientData.email || ''}</div>
+              ${contract.client_signed ? `<div style="color:#16a34a;font-size:0.82rem;margin-top:6px;font-weight:600;">✅ Signed ${new Date(contract.client_signed_at).toLocaleDateString()}</div>` : '<div style="color:#f59e0b;font-size:0.82rem;margin-top:6px;">⏳ Awaiting signature</div>'}
+            </div>
+            <div class="party-box">
+              <div class="party-role">Freelancer</div>
+              <div class="party-name">${freelancerData.full_name || 'Freelancer'}</div>
+              <div class="party-email">${freelancerData.email || ''}</div>
+              ${contract.freelancer_signed ? `<div style="color:#16a34a;font-size:0.82rem;margin-top:6px;font-weight:600;">✅ Signed ${new Date(contract.freelancer_signed_at).toLocaleDateString()}</div>` : '<div style="color:#f59e0b;font-size:0.82rem;margin-top:6px;">⏳ Awaiting signature</div>'}
+            </div>
+          </div>
+        </div>
+
+        <div class="contract-section">
+          <h4>Project Details</h4>
+          <div style="background:var(--bg);border-radius:8px;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.9rem;">
+            <div><span style="color:var(--muted);">Total Value</span><br/><strong style="font-size:1.1rem;color:var(--blue);">${parseFloat(contract.total_amount||0).toFixed(2)} ETB</strong></div>
+            <div><span style="color:var(--muted);">Milestones</span><br/><strong>${total_milestones} milestone${total_milestones!==1?'s':''}</strong></div>
+            <div><span style="color:var(--muted);">Escrow Status</span><br/><strong>${contract.escrow_status || 'unfunded'}</strong></div>
+            <div><span style="color:var(--muted);">Progress</span><br/><strong>${progress_percent}% complete</strong></div>
+          </div>
+        </div>
+
+        <div class="contract-section">
+          <h4>Terms & Conditions</h4>
+          <ul class="terms-list">
+            <li>The Freelancer agrees to deliver the agreed services as described in the job posting within the specified timeline.</li>
+            <li>Payment will be held in escrow by Ethio Gigs and released to the Freelancer upon Client approval of each milestone.</li>
+            <li>The Client agrees to review and approve or request revisions within 5 business days of delivery.</li>
+            <li>All work produced under this contract is the intellectual property of the Client upon full payment.</li>
+            <li>Either party may raise a dispute through the Ethio Gigs platform. Escrow funds will be frozen during dispute resolution.</li>
+            <li>The Freelancer may not share confidential project information with third parties without written consent.</li>
+            <li>Ethio Gigs charges a 10% platform fee on all transactions, deducted from the total contract value.</li>
+            <li>This agreement is governed by the laws of Ethiopia and the Ethio Gigs Terms of Service.</li>
+          </ul>
+        </div>
+
+        <!-- SIGNATURE SECTION -->
+        <div id="signatureSection">
+          <h4 style="font-weight:700;font-size:0.9rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:16px;">Digital Signatures</h4>
+          <div class="sig-section">
+            <!-- Client signature -->
+            <div class="sig-box ${contract.client_signed ? 'signed' : 'pending'}">
+              <div class="sig-role">Client</div>
+              <div class="sig-name">${clientData.full_name || 'Client'}</div>
+              ${contract.client_signed ? `
+                <div class="sig-status" style="color:#16a34a;">✅ Signed</div>
+                ${contract.client_signature && contract.client_signature.startsWith('data:') ?
+                  `<img src="${contract.client_signature}" style="max-width:100%;border:1px solid #86efac;border-radius:6px;margin-bottom:6px;" />` :
+                  `<div style="font-family:Georgia,serif;font-size:1.3rem;padding:12px;border:1px solid #86efac;border-radius:6px;margin-bottom:6px;">${contract.client_signature || ''}</div>`}
+                <div class="sig-date">${new Date(contract.client_signed_at).toLocaleString()}</div>
+              ` : `<div class="sig-status" style="color:#f59e0b;">⏳ Awaiting signature</div>`}
+              ${isClient && !contract.client_signed ? renderSignPad('client') : ''}
+            </div>
+
+            <!-- Freelancer signature -->
+            <div class="sig-box ${contract.freelancer_signed ? 'signed' : 'pending'}">
+              <div class="sig-role">Freelancer</div>
+              <div class="sig-name">${freelancerData.full_name || 'Freelancer'}</div>
+              ${contract.freelancer_signed ? `
+                <div class="sig-status" style="color:#16a34a;">✅ Signed</div>
+                ${contract.freelancer_signature && contract.freelancer_signature.startsWith('data:') ?
+                  `<img src="${contract.freelancer_signature}" style="max-width:100%;border:1px solid #86efac;border-radius:6px;margin-bottom:6px;" />` :
+                  `<div style="font-family:Georgia,serif;font-size:1.3rem;padding:12px;border:1px solid #86efac;border-radius:6px;margin-bottom:6px;">${contract.freelancer_signature || ''}</div>`}
+                <div class="sig-date">${new Date(contract.freelancer_signed_at).toLocaleString()}</div>
+              ` : `<div class="sig-status" style="color:#f59e0b;">⏳ Awaiting signature</div>`}
+              ${isFreelancer && !contract.freelancer_signed ? renderSignPad('freelancer') : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESCROW BAR -->
+      <div class="escrow-bar">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <h4 style="font-weight:700;margin:0;">💰 Escrow</h4>
+          <span style="font-size:0.85rem;color:var(--muted);">${contract.escrow_status}</span>
+        </div>
+        <div class="escrow-track"><div class="escrow-fill" style="width:${escrowPct}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--muted);">
+          <span>Released: ${(contract.total_amount - (contract.escrow_balance||0)).toFixed(2)} ETB</span>
+          <span>Locked: ${parseFloat(contract.escrow_balance||0).toFixed(2)} ETB</span>
+        </div>
+        ${isClient && contract.escrow_status === 'unfunded' && contract.client_signed && contract.freelancer_signed ? `
+          <div style="margin-top:12px;padding:12px;background:#eff6ff;border-radius:8px;font-size:0.88rem;">
+            <strong style="color:var(--blue);">Fund Escrow to Begin Work</strong>
+            <p style="color:var(--muted);margin:4px 0 10px;">Both parties have signed. Fund the escrow to allow the freelancer to start.</p>
+            <button class="btn btn-primary btn-sm" onclick="fundEscrow()">💳 Fund Escrow (${parseFloat(contract.total_amount||0).toFixed(2)} ETB)</button>
+          </div>` : ''}
+      </div>
+
+      <!-- MILESTONE TRACKER -->
+      <div class="table-card" style="padding:24px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+          <h4 style="font-weight:700;margin:0;">📋 Milestones (${completed_milestones}/${total_milestones} done)</h4>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:120px;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
+              <div style="width:${progress_percent}%;height:100%;background:linear-gradient(90deg,var(--teal),var(--blue));border-radius:4px;"></div>
+            </div>
+            <span style="font-size:0.82rem;font-weight:700;color:var(--blue);">${progress_percent}%</span>
+          </div>
+        </div>
+        ${milestones.length ? milestones.map(ms => renderMilestone(ms, isClient, isFreelancer)).join('') :
+          `<div style="text-align:center;padding:24px;color:var(--muted);">No milestones yet. <a href="#" onclick="addMilestone()">Add one</a></div>`}
+      </div>
+
+      <!-- ACTIONS -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;padding-bottom:40px;">
+        <a href="/api/invoices/${contractId}?token=${getToken()}" target="_blank" class="btn btn-outline btn-sm">📄 Download Invoice</a>
+        ${contract.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="raiseDispute()">⚖️ Raise Dispute</button>` : ''}
+        ${isClient && contract.status === 'active' ? `<button class="btn btn-teal btn-sm" onclick="releaseAll()">💸 Release All Funds</button>` : ''}
+      </div>`;
+
+    // Init signature canvas after render
+    setTimeout(() => {
+      initCanvas();
+      // Proactively check KYC status and show gate if needed
+      checkKycStatus();
+    }, 100);
+
+  } catch (err) {
+    document.getElementById('contractWrap').innerHTML = `<div style="text-align:center;padding:60px;color:var(--muted);">
+      <div style="font-size:3rem;margin-bottom:12px;">😕</div>
+      <p>Contract not found or you don't have access.</p>
+      <a href="/dashboard.html" class="btn btn-outline" style="margin-top:16px;">← Dashboard</a>
+    </div>`;
+  }
+}
+
+function renderSignPad(role) {
+  return `
+    <div style="margin-top:12px;">
+      <div class="sig-tabs">
+        <button class="sig-tab active" id="tab-draw-${role}" onclick="switchSigMode('draw','${role}')">✏️ Draw</button>
+        <button class="sig-tab" id="tab-type-${role}" onclick="switchSigMode('type','${role}')">⌨️ Type</button>
+      </div>
+      <div id="draw-pad-${role}" class="sig-canvas-wrap">
+        <canvas id="sigCanvas-${role}" width="240" height="100"></canvas>
+        <button onclick="clearCanvas('${role}')" style="position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--muted);">Clear</button>
+      </div>
+      <div id="type-pad-${role}" class="hidden">
+        <input type="text" class="sig-typed" id="sigTyped-${role}" placeholder="Type your full name" />
+      </div>
+      <button class="btn btn-primary btn-full" style="margin-top:8px;" onclick="signContract('${role}')">✍️ Sign Contract</button>
+      <p style="font-size:0.75rem;color:var(--muted);margin-top:6px;">By signing, you agree to all terms above.</p>
+    </div>`;
+}
+
+function renderMilestone(ms, isClient, isFreelancer) {
+  const stClass = ms.status === 'released' || ms.status === 'approved' ? 'done' : ms.status === 'submitted' ? 'submitted' : ms.status === 'active' ? 'active' : '';
+  const stLabel = { pending:'Pending', active:'In Progress', submitted:'Under Review', approved:'Approved', released:'Paid' }[ms.status] || ms.status;
+  const stColor = { pending:'status-pending', active:'status-active', submitted:'status-pending', approved:'status-completed', released:'status-completed' }[ms.status] || '';
+  const dotClass = ms.status === 'released' || ms.status === 'approved' ? 'done' : ms.status === 'submitted' ? 'submitted' : ms.status === 'active' ? 'active' : '';
+
+  let actions = '';
+  if (isFreelancer && (ms.status === 'active' || ms.status === 'pending')) {
+    actions += `<button class="btn btn-primary btn-sm" onclick="openDeliverModal(${ms.id})">📤 Submit Work</button>`;
+  }
+  if (isClient && ms.status === 'submitted') {
+    actions += `<button class="btn btn-teal btn-sm" onclick="approveDelivery(${ms.delivery?.id})">✅ Approve</button>`;
+    actions += `<button class="btn btn-outline btn-sm" onclick="openRevisionModal(${ms.delivery?.id})">🔄 Revision</button>`;
+  }
+  if (isClient && ms.status === 'approved') {
+    actions += `<button class="btn btn-primary btn-sm" onclick="releaseMilestone(${ms.id})">💸 Release Payment</button>`;
+  }
+
+  const delivery = ms.delivery;
+  return `
+    <div class="milestone-step">
+      <div class="ms-dot ${dotClass}">${dotClass === 'done' ? '✓' : dotClass === 'submitted' ? '?' : ''}</div>
+      <div class="ms-box ${stClass}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+          <div>
+            <div style="font-weight:700;">${ms.title}</div>
+            ${ms.due_date ? `<div style="font-size:0.78rem;color:var(--muted);">Due: ${new Date(ms.due_date).toLocaleDateString()}</div>` : ''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:800;color:var(--blue);">${parseFloat(ms.amount||0).toFixed(2)} ETB</div>
+            <span class="status ${stColor}" style="font-size:0.75rem;">${stLabel}</span>
+          </div>
+        </div>
+        ${delivery ? `
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px;font-size:0.85rem;">
+            <div style="font-weight:600;margin-bottom:4px;">Latest Delivery</div>
+            ${delivery.message ? `<p style="color:var(--muted);margin:0 0 6px;">${delivery.message}</p>` : ''}
+            ${delivery.feedback ? `<div style="background:#fef9c3;padding:6px 8px;border-radius:4px;font-size:0.82rem;"><strong>Feedback:</strong> ${delivery.feedback}</div>` : ''}
+            ${delivery.files ? (() => { try { const f = JSON.parse(delivery.files); return f.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">${f.map(x=>`<a href="${x.url}" target="_blank" style="background:#eff6ff;color:var(--blue);padding:3px 8px;border-radius:4px;font-size:0.78rem;text-decoration:none;">📎 ${x.filename}</a>`).join('')}</div>` : ''; } catch { return ''; } })() : ''}
+          </div>` : ''}
+        ${actions ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">${actions}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ── Signature ──────────────────────────────────────────────
+function initCanvas() {
+  ['client','freelancer'].forEach(role => {
+    const c = document.getElementById(`sigCanvas-${role}`);
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    ctx.strokeStyle = '#1E3A8A';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    let drawing = false, lastX = 0, lastY = 0;
+    const getPos = (e) => {
+      const r = c.getBoundingClientRect();
+      const src = e.touches ? e.touches[0] : e;
+      return [src.clientX - r.left, src.clientY - r.top];
+    };
+    c.addEventListener('mousedown', e => { drawing = true; [lastX, lastY] = getPos(e); });
+    c.addEventListener('mousemove', e => {
+      if (!drawing) return;
+      const [x, y] = getPos(e);
+      ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+      [lastX, lastY] = [x, y];
+    });
+    c.addEventListener('mouseup', () => drawing = false);
+    c.addEventListener('mouseleave', () => drawing = false);
+    c.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; [lastX, lastY] = getPos(e); }, { passive: false });
+    c.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (!drawing) return;
+      const [x, y] = getPos(e);
+      ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+      [lastX, lastY] = [x, y];
+    }, { passive: false });
+    c.addEventListener('touchend', () => drawing = false);
+  });
+}
+
+function clearCanvas(role) {
+  const c = document.getElementById(`sigCanvas-${role}`);
+  if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
+}
+
+function switchSigMode(mode, role) {
+  document.getElementById(`draw-pad-${role}`)?.classList.toggle('hidden', mode !== 'draw');
+  document.getElementById(`type-pad-${role}`)?.classList.toggle('hidden', mode !== 'type');
+  document.getElementById(`tab-draw-${role}`)?.classList.toggle('active', mode === 'draw');
+  document.getElementById(`tab-type-${role}`)?.classList.toggle('active', mode === 'type');
+}
+
+async function signContract(role) {
+  let signature = '';
+  const drawPad = document.getElementById(`draw-pad-${role}`);
+  const typePad = document.getElementById(`type-pad-${role}`);
+
+  if (!drawPad?.classList.contains('hidden')) {
+    const c = document.getElementById(`sigCanvas-${role}`);
+    signature = c ? c.toDataURL() : '';
+    // Check if canvas has any drawing
+    const ctx = c?.getContext('2d');
+    const data = ctx?.getImageData(0, 0, c.width, c.height).data;
+    const hasDrawing = data && Array.from(data).some(v => v !== 0);
+    if (!hasDrawing) { toast('Please draw your signature first', 'error'); return; }
+  } else {
+    signature = document.getElementById(`sigTyped-${role}`)?.value?.trim();
+    if (!signature) { toast('Please type your name to sign', 'error'); return; }
+  }
+
+  try {
+    const res = await apiFetch(`/contracts/${contractId}/sign`, {
+      method: 'POST',
+      body: JSON.stringify({ signature })
+    });
+    if (res.both_signed) {
+      toast('🎉 Contract fully signed! Work can now begin.', 'success');
+    } else {
+      toast('✅ You signed! Waiting for the other party.', 'success');
+    }
+    setTimeout(() => loadContract(), 1000);
+  } catch (err) {
+    if (err.error === 'KYC_REQUIRED') {
+      showKycGate();
+    } else {
+      toast(err.message || 'Signing failed', 'error');
+    }
+  }
+}
+
+function scrollToSign() {
+  document.getElementById('signatureSection')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function checkKycStatus() {
+  try {
+    const status = await apiFetch(`/kyc/status/${user.id}`);
+    if (status.kyc_status !== 'approved' || !status.is_verified) {
+      showKycGate();
+    }
+  } catch {}
+}
+
+function showKycGate() {
+  // Remove any existing gate
+  document.getElementById('kycGateBanner')?.remove();
+  const sigSection = document.getElementById('signatureSection');
+  if (!sigSection) return;
+  const banner = document.createElement('div');
+  banner.id = 'kycGateBanner';
+  banner.style.cssText = 'background:#fef9c3;border:2px solid #f59e0b;border-radius:12px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px;';
+  banner.innerHTML = `
+    <div style="font-size:2rem;flex-shrink:0;">🔒</div>
+    <div style="flex:1;">
+      <div style="font-weight:800;font-size:1rem;color:#92400e;margin-bottom:6px;">Identity Verification Required to Sign</div>
+      <div style="color:#78350f;font-size:0.88rem;line-height:1.6;margin-bottom:14px;">
+        To protect both parties, you must verify your identity before signing a contract.
+        This takes less than 2 minutes — upload your National ID and a selfie.
+      </div>
+      <a href="/verify.html" class="btn btn-primary btn-sm">🪪 Verify My Identity Now</a>
+    </div>`;
+  sigSection.insertAdjacentElement('beforebegin', banner);
+  banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── Delivery ───────────────────────────────────────────────
+function openDeliverModal(msId) {
+  currentMilestoneId = msId;
+  document.getElementById('deliverModal').classList.remove('hidden');
+}
+
+function showFileList(input) {
+  const list = document.getElementById('fileList');
+  if (!list) return;
+  const files = Array.from(input.files);
+  list.innerHTML = files.map(f => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border-radius:6px;margin-bottom:4px;font-size:0.85rem;">
+      <span>📎</span>
+      <span style="flex:1;font-weight:600;">${f.name}</span>
+      <span style="color:var(--muted);">${(f.size/1024/1024).toFixed(1)} MB</span>
+    </div>`).join('');
+}
+
+async function submitDelivery() {
+  const message = document.getElementById('deliverMessage').value.trim();
+  const files = document.getElementById('deliverFiles').files;
+
+  if (!message && files.length === 0) {
+    toast('Please add a delivery message or attach at least one file as proof of delivery', 'error');
+    return;
+  }
+  if (message.length < 20) {
+    toast('Please provide a more detailed delivery description (at least 20 characters)', 'error');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('message', message);
+  for (const f of files) formData.append('files', f);
+  try {
+    const res = await fetch(`${window.location.origin}/api/milestones/${currentMilestoneId}/deliver`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw data;
+    toast('Work submitted!', 'success');
+    document.getElementById('deliverModal').classList.add('hidden');
+    loadContract();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+function openRevisionModal(deliveryId) {
+  currentDeliveryId = deliveryId;
+  document.getElementById('revisionModal').classList.remove('hidden');
+}
+
+async function submitRevision() {
+  const feedback = document.getElementById('revisionFeedback').value;
+  if (!feedback) { toast('Please provide feedback', 'error'); return; }
+  try {
+    await apiFetch(`/deliveries/${currentDeliveryId}/request-revision`, { method: 'PUT', body: JSON.stringify({ feedback }) });
+    toast('Revision requested', 'success');
+    document.getElementById('revisionModal').classList.add('hidden');
+    loadContract();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+async function approveDelivery(deliveryId) {
+  if (!deliveryId) { toast('No delivery found', 'error'); return; }
+  try {
+    await apiFetch(`/deliveries/${deliveryId}/approve`, { method: 'PUT' });
+    toast('Delivery approved!', 'success');
+    loadContract();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+async function releaseMilestone(msId) {
+  try {
+    await apiFetch('/payments/release-milestone', { method: 'POST', body: JSON.stringify({ milestone_id: msId }) });
+    toast('Payment released!', 'success');
+    loadContract();
+  } catch (err) { toast(err.error || 'Failed', 'error'); }
+}
+
+async function releaseAll() {
+  if (!confirm('Release all remaining escrow funds to the freelancer?')) return;
+  try {
+    await apiFetch('/payments/release-full', { method: 'POST', body: JSON.stringify({ contract_id: parseInt(contractId) }) });
+    toast('All funds released!', 'success');
+    loadContract();
+  } catch (err) { toast(err.error || 'Failed', 'error'); }
+}
+
+async function fundEscrow() {
+  try {
+    const res = await apiFetch('/payments/initiate', {
+      method: 'POST',
+      body: JSON.stringify({ contract_id: parseInt(contractId), amount: contractData?.contract?.total_amount, method: 'wallet' })
+    });
+    toast(`Escrow funded! Fee: ${res.fee} ETB`, 'success');
+    loadContract();
+  } catch (err) { toast(err.error || err.message || 'Failed to fund escrow', 'error'); }
+}
+
+async function raiseDispute() {
+  const reason = prompt('Describe the issue (minimum 20 characters):');
+  if (!reason || reason.length < 20) { toast('Please provide a detailed reason', 'error'); return; }
+  try {
+    await apiFetch('/disputes', { method: 'POST', body: JSON.stringify({ contract_id: parseInt(contractId), reason }) });
+    toast('Dispute raised. Escrow frozen pending review.', 'success');
+    loadContract();
+  } catch (err) { toast(err.error || 'Failed', 'error'); }
+}
+
+loadContract();
+loadNotifications();
+</script>
+</body>
+</html>

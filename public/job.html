@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Detail — Ethio Gigs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<nav class="navbar"><div class="nav-container"><a href="/" class="logo">Ethio<span>Gigs</span></a>
+  <div class="nav-links"><a href="/">Home</a><a href="/marketplace.html">Marketplace</a><a href="/dashboard.html" class="auth-only hidden">Dashboard</a></div>
+  <div class="nav-actions"><button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button><a href="/login.html" class="btn btn-outline guest-only">Login</a><button class="btn btn-outline auth-only hidden" id="logoutBtn">Logout</button></div>
+</div></nav>
+
+<div style="max-width:900px;margin:32px auto;padding:0 20px;display:grid;grid-template-columns:1fr 300px;gap:24px;" id="jobLayout">
+  <div id="jobDetail"><div class="loading-spinner">Loading...</div></div>
+  <div id="jobSidebar"></div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/i18n.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const jobId = params.get('id');
+if (!jobId) window.location.href = '/marketplace.html';
+const currentUser = getUser();
+let existingProposalId = null;
+let existingEditCount = 0;
+
+async function loadJob() {
+  try {
+    const job = await apiFetch(`/jobs/${jobId}`);
+    const isFreelancer = currentUser && (currentUser.active_role === 'freelancer' || currentUser.role === 'freelancer');
+    const isOwner = currentUser && job.client_id === currentUser.id;
+
+    document.getElementById('jobDetail').innerHTML = `
+      <div class="table-card" style="padding:28px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+          <div>
+            <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:6px;">${job.title}</h2>
+            <div style="color:var(--muted);font-size:0.9rem;">Posted by <strong>${job.client_name}</strong> · ${new Date(job.created_at).toLocaleDateString()}</div>
+          </div>
+          <span class="status status-${job.status === 'open' ? 'open' : job.status === 'in_progress' ? 'active' : 'completed'}">${job.status}</span>
+        </div>
+        <p style="line-height:1.8;color:var(--text);margin-bottom:20px;white-space:pre-line;">${job.description}</p>
+        ${job.skills?.length ? `<div class="skills-list" style="margin-bottom:0;">${job.skills.map(s=>`<span class="skill-tag">${s.name}</span>`).join('')}</div>` : ''}
+      </div>
+
+      ${isLoggedIn() && isFreelancer && job.status === 'open' ? `
+        <div class="table-card" style="padding:28px;margin-top:20px;" id="proposalForm">
+          <h3 style="font-weight:700;margin-bottom:16px;" id="proposalFormTitle">📝 Submit a Proposal</h3>
+          <div id="proposalAlert"></div>
+          <div class="form-group"><label>Cover Letter</label><textarea id="coverLetter" rows="4" placeholder="Why are you the best fit for this job? Mention your relevant experience..."></textarea></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="form-group"><label>Your Bid (ETB)</label><input type="number" id="bidAmount" placeholder="e.g. 2500" /></div>
+            <div class="form-group"><label>Delivery (days)</label><input type="number" id="deliveryDays" placeholder="e.g. 7" /></div>
+          </div>
+          <input type="hidden" id="proposalId" value="" />
+          <button class="btn btn-primary" id="submitProposalBtn" onclick="submitProposal()">Submit Proposal</button>
+        </div>` : ''}
+      ${isLoggedIn() && isFreelancer && job.status !== 'open' ? `
+        <div class="table-card" style="padding:24px;margin-top:20px;text-align:center;color:var(--muted);">
+          <div style="font-size:2rem;margin-bottom:8px;">🔒</div>
+          <p>This job is no longer accepting proposals.</p>
+        </div>` : ''}`;
+
+    document.getElementById('jobSidebar').innerHTML = `
+      <div class="table-card" style="padding:24px;">
+        <h4 style="font-weight:700;margin-bottom:16px;">Job Details</h4>
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:0.9rem;">
+          <div><span style="color:var(--muted);">Budget</span><br/><strong>${job.budget_min || 0} – ${job.budget_max || 0} ETB</strong></div>
+          <div><span style="color:var(--muted);">Type</span><br/><strong>${job.project_type || 'fixed'}</strong></div>
+          ${job.deadline ? `<div><span style="color:var(--muted);">Deadline</span><br/><strong>${new Date(job.deadline).toLocaleDateString()}</strong></div>` : ''}
+        </div>
+        ${!isLoggedIn() ? `<a href="/register.html" class="btn btn-primary btn-full" style="margin-top:16px;">Sign up to Apply</a>` : ''}
+      </div>`;
+
+    // Check if freelancer already submitted
+    if (isLoggedIn() && isFreelancer) {
+      checkExistingProposal();
+    }
+
+    // Load proposals if client/owner
+    if (isOwner) loadProposals();
+
+  } catch {
+    document.getElementById('jobDetail').innerHTML = '<p class="text-center">Job not found.</p>';
+  }
+}
+
+async function checkExistingProposal() {
+  try {
+    const myProposals = await apiFetch('/proposals/my');
+    const existing = myProposals.find(p => p.job_id == jobId);
+    if (!existing) return;
+
+    existingProposalId = existing.id;
+    existingEditCount = existing.edit_count || 0;
+    const editsLeft = 3 - existingEditCount;
+
+    // Pre-fill form
+    const cl = document.getElementById('coverLetter');
+    const ba = document.getElementById('bidAmount');
+    const dd = document.getElementById('deliveryDays');
+    const pid = document.getElementById('proposalId');
+    if (cl) cl.value = existing.cover_letter || '';
+    if (ba) ba.value = existing.bid_amount || '';
+    if (dd) dd.value = existing.delivery_days || '';
+    if (pid) pid.value = existing.id;
+
+    const title = document.getElementById('proposalFormTitle');
+    const btn = document.getElementById('submitProposalBtn');
+    const alert = document.getElementById('proposalAlert');
+
+    if (existing.status !== 'pending') {
+      // Can't edit non-pending proposals
+      if (title) title.innerHTML = `Your Proposal — <span class="status status-${existing.status === 'accepted' ? 'completed' : existing.status === 'rejected' ? 'cancelled' : 'active'}">${existing.status}</span>`;
+      if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.textContent = 'Proposal ' + existing.status; }
+      if (existing.status === 'accepted' && existing.contract_id) {
+        if (alert) alert.innerHTML = `<div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-weight:600;color:#15803d;">🎉 Accepted! <a href="/contract.html?id=${existing.contract_id}" style="color:#15803d;text-decoration:underline;">View your contract →</a></div>`;
+      }
+    } else if (editsLeft <= 0) {
+      if (title) title.innerHTML = `✏️ Your Proposal <span style="font-size:0.8rem;color:#dc2626;font-weight:400;">(edit limit reached)</span>`;
+      if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.textContent = 'Edit limit reached'; }
+    } else {
+      if (title) title.innerHTML = `✏️ Edit Your Proposal <span style="font-size:0.8rem;color:var(--muted);font-weight:400;">(${editsLeft} edit${editsLeft !== 1 ? 's' : ''} remaining)</span>`;
+      if (btn) btn.textContent = '✏️ Update Proposal';
+      if (alert) alert.innerHTML = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem;color:#1d4ed8;">You already submitted a proposal. You can edit it ${editsLeft} more time${editsLeft !== 1 ? 's' : ''}.</div>`;
+    }
+  } catch {}
+}
+
+async function submitProposal() {
+  const cover_letter = document.getElementById('coverLetter').value;
+  const bid_amount = document.getElementById('bidAmount').value;
+  const delivery_days = document.getElementById('deliveryDays').value;
+  const proposalId = document.getElementById('proposalId')?.value;
+
+  if (!cover_letter || !bid_amount) { toast('Cover letter and bid amount are required', 'error'); return; }
+
+  try {
+    if (proposalId) {
+      const res = await apiFetch(`/proposals/${proposalId}/edit`, {
+        method: 'PUT',
+        body: JSON.stringify({ cover_letter, bid_amount, delivery_days })
+      });
+      toast(`Proposal updated! ${res.edits_remaining} edit${res.edits_remaining !== 1 ? 's' : ''} remaining.`, 'success');
+    } else {
+      await apiFetch('/proposals', { method: 'POST', body: JSON.stringify({ job_id: jobId, cover_letter, bid_amount, delivery_days }) });
+      toast('Proposal submitted successfully!', 'success');
+    }
+    setTimeout(() => loadJob(), 800);
+  } catch (err) {
+    if (err.error === 'ALREADY_SUBMITTED') {
+      toast('You already applied. Your form has been updated to edit mode.', '');
+      document.getElementById('proposalId').value = err.proposal_id;
+      existingEditCount = err.edit_count || 0;
+      checkExistingProposal();
+    } else if (err.error === 'EDIT_LIMIT_REACHED') {
+      toast('You have reached the maximum 3 edits for this proposal.', 'error');
+    } else {
+      toast(err.message || 'Failed to submit', 'error');
+    }
+  }
+}
+
+async function loadProposals() {
+  try {
+    const proposals = await apiFetch(`/proposals/job/${jobId}`);
+    const el = document.createElement('div');
+    el.className = 'table-card';
+    el.style.cssText = 'padding:28px;margin-top:20px;';
+    el.innerHTML = `<h3 style="font-weight:700;margin-bottom:16px;">Proposals (${proposals.length})</h3>` +
+      (proposals.length ? proposals.map(p => `
+        <div style="border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px;${p.status==='accepted'?'border-left:4px solid #16a34a;background:#f0fdf4;':''}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+            <div>
+              <a href="/profile.html?id=${p.freelancer_id}" style="font-weight:700;color:var(--blue);">${p.freelancer_name}</a>
+              ${p.freelancer_title ? `<div style="font-size:0.8rem;color:var(--muted);">${p.freelancer_title}</div>` : ''}
+              ${p.avg_rating ? `<div style="font-size:0.8rem;">⭐ ${parseFloat(p.avg_rating).toFixed(1)}</div>` : ''}
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:800;color:var(--blue);font-size:1.1rem;">${p.bid_amount} ETB</div>
+              <div style="font-size:0.8rem;color:var(--muted);">${p.delivery_days} days</div>
+            </div>
+          </div>
+          ${p.cover_letter ? `<p style="color:var(--muted);font-size:0.88rem;margin:0 0 12px;line-height:1.6;background:var(--bg);padding:10px;border-radius:6px;">"${p.cover_letter}"</p>` : ''}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${p.status === 'pending' || p.status === 'shortlisted' ? `
+              <button class="btn btn-sm btn-teal" onclick="updateProposal(${p.id},'accepted')">✅ Accept</button>
+              <button class="btn btn-sm btn-outline" onclick="updateProposal(${p.id},'shortlisted')">⭐ Shortlist</button>
+              <button class="btn btn-sm btn-danger" onclick="updateProposal(${p.id},'rejected')">❌ Reject</button>
+            ` : `<span class="status status-${p.status==='accepted'?'completed':p.status==='rejected'?'cancelled':'active'}">${p.status}</span>`}
+          </div>
+        </div>`).join('') : '<p style="color:var(--muted);text-align:center;padding:20px;">No proposals yet.</p>');
+    document.getElementById('jobDetail').appendChild(el);
+  } catch {}
+}
+
+async function updateProposal(id, status) {
+  try {
+    const res = await apiFetch(`/proposals/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+    if (status === 'accepted' && res.contract_id) {
+      toast('🎉 Proposal accepted! Contract created. Redirecting...', 'success');
+      setTimeout(() => window.location.href = `/contract.html?id=${res.contract_id}`, 1800);
+    } else {
+      toast(`Proposal ${status}`, 'success');
+      loadJob();
+    }
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+loadJob();
+</script>
+</body>
+</html>

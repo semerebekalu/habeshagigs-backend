@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contract Templates — Ethio Gigs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .templates-hero { background: linear-gradient(135deg, var(--blue), var(--teal)); color: #fff; padding: 56px 20px; text-align: center; }
+    .templates-hero h1 { font-size: clamp(1.8rem,4vw,2.6rem); font-weight: 800; margin-bottom: 10px; }
+    .templates-hero p { opacity: .9; font-size: 1.05rem; }
+    .templates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 40px 20px; max-width: 1200px; margin: 0 auto; }
+    .template-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; transition: all .2s; cursor: pointer; display: flex; flex-direction: column; }
+    .template-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px); border-color: var(--teal); }
+    .template-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .template-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .template-category { font-size: 0.8rem; font-weight: 600; color: var(--teal); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
+    .template-desc { color: var(--muted); font-size: 0.88rem; line-height: 1.6; flex: 1; margin-bottom: 16px; }
+    .template-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; font-size: 0.82rem; color: var(--muted); }
+    .template-meta span { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; }
+    .milestones-preview { margin-bottom: 16px; }
+    .milestones-preview h5 { font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+    .milestone-item { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; margin-bottom: 5px; }
+    .milestone-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+    .milestone-pct { margin-left: auto; font-weight: 700; color: var(--blue); }
+  </style>
+</head>
+<body>
+<nav class="navbar"><div class="nav-container"><a href="/" class="logo">Ethio<span>Gigs</span></a>
+  <div class="nav-links"><a href="/">Home</a><a href="/marketplace.html">Marketplace</a><a href="/dashboard.html" class="auth-only hidden">Dashboard</a></div>
+  <div class="nav-actions"><button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button><a href="/login.html" class="btn btn-outline guest-only">Login</a><button class="btn btn-outline auth-only hidden" id="logoutBtn">Logout</button></div>
+</div></nav>
+
+<div class="templates-hero">
+  <h1>📋 Contract Templates</h1>
+  <p>Start your project faster with pre-built milestone structures for every service type</p>
+</div>
+
+<div class="templates-grid" id="templatesGrid">
+  <div class="loading-spinner" style="grid-column:1/-1;">Loading templates...</div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/i18n.js"></script>
+<script>
+async function loadTemplates() {
+  const grid = document.getElementById('templatesGrid');
+  try {
+    const templates = await apiFetch('/contract-templates');
+    if (!templates.length) { grid.innerHTML = '<p class="text-center">No templates available.</p>'; return; }
+    grid.innerHTML = templates.map(t => {
+      const milestones = Array.isArray(t.default_milestones) ? t.default_milestones : (JSON.parse(t.default_milestones || '[]'));
+      const milestonesHtml = milestones.slice(0, 3).map(m =>
+        `<div class="milestone-item"><div class="milestone-dot"></div><span>${m.title}</span><span class="milestone-pct">${m.percent}%</span></div>`
+      ).join('');
+      return `
+        <div class="template-card" onclick="useTemplate(${t.id})">
+          <div class="template-icon">${t.icon || '📄'}</div>
+          <div class="template-name">${t.name}</div>
+          <div class="template-category">${t.category}</div>
+          <div class="template-desc">${t.description}</div>
+          <div class="template-meta">
+            <span>⏱ ${t.estimated_days} days</span>
+            <span>💰 ${Number(t.price_range_min).toLocaleString()}–${Number(t.price_range_max).toLocaleString()} ETB</span>
+          </div>
+          ${milestones.length ? `<div class="milestones-preview"><h5>Milestones</h5>${milestonesHtml}</div>` : ''}
+          <button class="btn btn-primary btn-full" onclick="event.stopPropagation();useTemplate(${t.id})">Use This Template</button>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    grid.innerHTML = '<p class="text-center" style="color:var(--muted);">Could not load templates.</p>';
+  }
+}
+
+function useTemplate(id) {
+  window.location.href = `/post-job.html?template=${id}`;
+}
+
+loadTemplates();
+</script>
+</body>
+</html>

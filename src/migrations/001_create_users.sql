@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(30) UNIQUE,
+    password_hash VARCHAR(255),
+    role ENUM('freelancer','client','admin') NOT NULL DEFAULT 'client',
+    active_role ENUM('freelancer','client') DEFAULT 'client',
+    google_id VARCHAR(255) NULL,
+    is_verified TINYINT(1) DEFAULT 0,
+    kyc_status ENUM('none','pending','approved','rejected') DEFAULT 'none',
+    wallet_balance DECIMAL(15,2) DEFAULT 0.00,
+    language_pref ENUM('en','am') DEFAULT 'en',
+    failed_login_attempts INT DEFAULT 0,
+    locked_until DATETIME NULL,
+    is_suspended TINYINT(1) DEFAULT 0,
+    is_banned TINYINT(1) DEFAULT 0,
+    created_at DATETIME DEFAULT NOW(),
+    updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
+);

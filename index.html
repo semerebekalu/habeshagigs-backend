@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HabeshaGigs | Crystal Suite v3.0</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --primary: #3b82f6; --text: #f8fafc; --muted: #94a3b8; --success: #22c55e; --danger: #ef4444; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .view { display: none; } .view.active { display: block; animation: fade 0.3s ease; }
+        @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .auth-box { background: var(--card); padding: 2rem; border-radius: 12px; max-width: 400px; margin: 40px auto; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #334155; border: 1px solid #475569; color: var(--text); border-radius: 6px; }
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 10px; transition: 0.2s; }
+        button:hover { opacity: 0.9; } button.outline { background: transparent; border: 1px solid var(--primary); margin-top: 5px; }
+        .nav { background: var(--card); padding: 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #334155; }
+        .nav-links button { width: auto; margin: 0 5px; padding: 8px 15px; font-size: 14px; background: transparent; }
+        .nav-links button.active { background: var(--primary); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: var(--card); padding: 20px; border-radius: 10px; border: 1px solid #334155; }
+        .job-card, .notif-card { background: var(--card); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .badge { background: #22c55e33; color: var(--success); padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .hidden { display: none !important; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: var(--success); color: white; padding: 12px 20px; border-radius: 6px; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    </style>
+</head>
+<body>
+    <!-- NAV BAR -->
+    <div class="nav hidden" id="mainNav">
+        <div style="font-weight:800; font-size:20px;">HabeshaGigs <span style="color:var(--muted); font-size:12px;">Crystal Suite v3.0</span></div>
+        <div class="nav-links">
+            <button onclick="router('dashboard')">🏠 Dashboard</button>
+            <button onclick="router('marketplace')">🔍 Marketplace</button>
+            <button onclick="router('postJob')" id="navPostJob" class="hidden">➕ Post Gig</button>
+            <button onclick="router('myJobs')" id="navMyJobs" class="hidden">📌 My Jobs</button>
+            <button onclick="router('admin')" id="navAdmin" class="hidden">👑 Admin</button>
+            <button onclick="router('notifications')">🔔 (<span id="notifCount">0</span>)</button>
+            <button onclick="logout()" style="color:var(--danger)">Log Out</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- AUTH VIEW -->
+        <div id="authView" class="view active">
+            <div class="auth-box" id="loginSection">
+                <h2>Welcome Back</h2>
+                <p style="color:var(--muted); margin:10px 0;">Log in to your HabeshaGigs workspace.</p>
+                <form id="loginForm">
+                    <input type="email" id="loginEmail" placeholder="Email Address" required>
+                    <input type="password" id="loginPass" placeholder="Password" required>
+                    <button type="submit">Sign In</button>
+                </form>
+                <p style="margin-top:15px; color:var(--muted);">New here? <button class="outline" onclick="toggleAuth('register')">Create Account</button></p>
+            </div>
+            <div class="auth-box hidden" id="registerSection">
+                <h2>Join the Talent</h2>
+                <p style="color:var(--muted); margin:10px 0;">Create your professional profile today.</p>
+                <form id="registerForm">
+                    <input type="text" id="regName" placeholder="Full Name" required>
+                    <input type="email" id="regEmail" placeholder="Email" required>
+                    <select id="regRole">
+                        <option value="freelancer">I am a Freelancer</option>
+                        <option value="client">I am hiring Talent</option>
+                        <option value="admin">I am Admin</option>
+                    </select>
+                    <input type="password" id="regPass" placeholder="Password" required>
+                    <button type="submit">Create Account</button>
+                </form>
+                <p style="margin-top:15px; color:var(--muted);">Already a member? <button class="outline" onclick="toggleAuth('login')">Log In</button></p>
+            </div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboardView" class="view">
+            <h2>Personal Overview</h2>
+            <p style="color:var(--muted); margin-bottom:20px;">Welcome to your HabeshaGigs dashboard. Track your balance, explore opportunities, post gigs, and manage freelancer applications.</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 style="color:var(--muted)">Wallet Balance</h3>
+                    <h1 id="userBalance">0.00 ETB</h1>
+                </div>
+                <div class="stat-card">
+                    <h3 style="color:var(--muted)">Completed Gigs</h3>
+                    <h1>12</h1>
+                    <span class="badge">High Performance</span>
+                </div>
+                <div class="stat-card">
+                    <h3 style="color:var(--muted)">Success Rate</h3>
+                    <h1>100%</h1>
+                    <span class="badge">Elite Tier</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADMIN VIEW -->
+        <div id="adminView" class="view">
+            <h2>Market Oversight</h2>
+            <p style="color:var(--muted); margin-bottom:20px;">Admin dashboard showing the full marketplace health, platform revenue and total active users.</p>
+            <div class="stats-grid">
+                <div class="stat-card"><h3>Total Registered Users</h3><h1 id="adminUserCount">...</h1></div>
+                <div class="stat-card"><h3>Live Projects</h3><h1 id="adminJobCount">...</h1></div>
+                <div class="stat-card"><h3>Platform Revenue</h3><h1 id="adminRevenue">...</h1></div>
+            </div>
+        </div>
+
+        <!-- POST JOB VIEW -->
+        <div id="postJobView" class="view">
+            <h2>Post a New Gig</h2>
+            <p style="color:var(--muted); margin:10px 0;">Create a job post and publish it instantly to the marketplace. Freelancers will apply and you can manage applications inside your dashboard.</p>
+            <form id="postJobForm" style="max-width:600px;">
+                <input type="text" id="jobTitle" placeholder="Gig Title" required>
+                <textarea id="jobDesc" rows="4" placeholder="Description" required></textarea>
+                <input type="number" id="jobBudget" placeholder="Budget (ETB)" required>
+                <button type="submit">🚀 Publish Gig</button>
+            </form>
+        </div>
+
+        <!-- MARKETPLACE VIEW -->
+        <div id="marketplaceView" class="view">
+            <h2>Marketplace</h2>
+            <p style="color:var(--muted); margin-bottom:20px;">Browse live gigs posted by clients. If you are a freelancer, you can apply instantly and send your proposal.</p>
+            <div id="jobsList"></div>
+        </div>
+
+        <!-- MY JOBS VIEW -->
+        <div id="myJobsView" class="view">
+            <h2>My Posted Gigs</h2>
+            <p style="color:var(--muted); margin-bottom:20px;">Manage your posted gigs. View freelancer applications and compare bids to hire the best talent.</p>
+            <div id="myJobsList"></div>
+        </div>
+
+        <!-- NOTIFICATIONS VIEW -->
+        <div id="notificationsView" class="view">
+            <h2>🔔 Notifications</h2>
+            <div id="notificationsList" style="margin-top:20px;"></div>
+        </div>
+    </div>
+
+    <!-- FULL STACK FRONTEND ENGINE (Appended Strictly) -->
+    <script>
+        const API = 'http://localhost:5001/api';
+        let currentUser = JSON.parse(localStorage.getItem('hg_user')) || null;
+        let pollingInterval = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (currentUser) setupSession();
+            else router('auth');
+        });
+
+        function router(view) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`${view}View`).classList.add('active');
+            if (view === 'dashboard') loadDashboard();
+            if (view === 'marketplace') loadJobs();
+            if (view === 'myJobs') loadMyJobs();
+            if (view === 'admin') loadAdminStats();
+            if (view === 'notifications') loadNotifications();
+        }
+
+        function toggleAuth(type) {
+            document.getElementById('loginSection').classList.toggle('hidden', type === 'register');
+            document.getElementById('registerSection').classList.toggle('hidden', type === 'login');
+        }
+
+        document.getElementById('registerForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const body = { name: document.getElementById('regName').value, email: document.getElementById('regEmail').value, phone: '', role: document.getElementById('regRole').value, password: document.getElementById('regPass').value };
+            const res = await fetch(`${API}/register`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const data = await res.json();
+            if (data.success) { toast('Account created! Please login.'); toggleAuth('login'); }
+            else toast('Error: ' + data.detail, true);
+        };
+
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const body = { email: document.getElementById('loginEmail').value, password: document.getElementById('loginPass').value };
+            const res = await fetch(`${API}/login`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const data = await res.json();
+            if (data.success) { 
+                currentUser = data.user; 
+                localStorage.setItem('hg_user', JSON.stringify(currentUser)); 
+                setupSession(); 
+                toast('Welcome back!'); 
+            } else toast('Invalid credentials', true);
+        };
+
+        function setupSession() {
+            document.getElementById('authView').classList.remove('active');
+            document.getElementById('mainNav').classList.remove('hidden');
+            document.getElementById('userBalance').textContent = `${currentUser.wallet_balance.toFixed(2)} ETB`;
+            if (currentUser.role === 'client' || currentUser.role === 'admin') document.getElementById('navPostJob').classList.remove('hidden');
+            if (currentUser.role === 'admin') document.getElementById('navAdmin').classList.remove('hidden');
+            startPolling();
+            router('dashboard');
+        }
+
+        function logout() { currentUser = null; localStorage.removeItem('hg_user'); location.reload(); }
+
+        async function loadDashboard() { document.getElementById('userBalance').textContent = `${currentUser.wallet_balance.toFixed(2)} ETB`; }
+        
+        async function loadJobs() {
+            const res = await fetch(`${API}/jobs/all`);
+            const jobs = await res.json();
+            document.getElementById('jobsList').innerHTML = jobs.map(j => `
+                <div class="job-card">
+                    <div>
+                        <h3>${j.title}</h3>
+                        <p style="color:var(--muted)">${j.description.substring(0, 60)}...</p>
+                        <small>Client: ${j.client_name} • Budget: ${j.budget} ETB</small>
+                    </div>
+                    ${currentUser.role === 'freelancer' ? `<button onclick="applyJob(${j.id})" style="width:auto; padding:8px 15px;">Apply</button>` : ''}
+                </div>
+            `).join('') || '<p style="text-align:center; color:var(--muted)">No active gigs found.</p>';
+        }
+
+        async function applyJob(jobId) {
+            const bid = prompt('Enter your bid amount (ETB):');
+            if (!bid) return;
+            const prop = prompt('Describe your proposal:');
+            if (!prop) return;
+            const res = await fetch(`${API}/proposals/apply`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ job_id: jobId, freelancer_id: currentUser.id, bid_amount: parseFloat(bid), proposal_text: prop })
+            });
+            const data = await res.json();
+            toast(data.message);
+        }
+
+        async function loadMyJobs() {
+            const res = await fetch(`${API}/jobs/my/${currentUser.id}`);
+            const jobs = await res.json();
+            document.getElementById('myJobsList').innerHTML = jobs.map(j => `
+                <div class="job-card">
+                    <h3>${j.title}</h3>
+                    <span class="badge">${j.status.toUpperCase()}</span>
+                </div>
+            `).join('') || '<p style="text-align:center; color:var(--muted)">You haven\'t posted any gigs yet.</p>';
+        }
+
+        document.getElementById('postJobForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const body = { title: document.getElementById('jobTitle').value, description: document.getElementById('jobDesc').value, budget: document.getElementById('jobBudget').value, client_id: currentUser.id };
+            const res = await fetch(`${API}/jobs/create`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const data = await res.json();
+            if (data.success) { toast('Gig published successfully!'); router('myJobs'); e.target.reset(); }
+        };
+
+        async function loadAdminStats() {
+            try {
+                const res = await fetch(`${API}/admin/stats`);
+                const stats = await res.json();
+                document.getElementById('adminUserCount').textContent = stats.userCount;
+                document.getElementById('adminJobCount').textContent = stats.jobCount;
+                document.getElementById('adminRevenue').textContent = stats.revenue;
+            } catch(err) { console.error("Admin stats failed:", err); }
+        }
+
+        async function loadNotifications() {
+            const res = await fetch(`${API}/notifications/${currentUser.id}`);
+            const data = await res.json();
+            document.getElementById('notifCount').textContent = data.unreadCount;
+            document.getElementById('notificationsList').innerHTML = data.notifications.map(n => `
+                <div class="notif-card" style="border-left: 4px solid ${n.is_read ? '#475569' : 'var(--primary)'}">
+                    <div>
+                        <strong>${n.title}</strong>
+                        <p style="color:var(--muted)">${n.message}</p>
+                    </div>
+                    ${!n.is_read ? `<button onclick="markRead(${n.id})" style="width:auto; padding:5px 10px; font-size:12px;">Mark Read</button>` : ''}
+                </div>
+            `).join('') || '<p style="text-align:center; color:var(--muted)">No notifications.</p>';
+        }
+
+        async function markRead(id) { await fetch(`${API}/notifications/read/${id}`, { method: 'POST' }); loadNotifications(); }
+
+        function toast(msg, isError = false) {
+            const t = document.createElement('div'); t.className = 'toast'; t.style.background = isError ? 'var(--danger)' : 'var(--success)';
+            t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+        }
+
+        function startPolling() {
+            if (pollingInterval) clearInterval(pollingInterval);
+            pollingInterval = setInterval(loadAdminStats, 2500);
+        }
+    </script>
+</body>
+</html>

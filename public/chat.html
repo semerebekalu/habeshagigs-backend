@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Messages — Ethio Gigs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { background: #f0f2f5; }
+    .chat-app { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 64px); background: var(--card); }
+    /* Sidebar */
+    .chat-sidebar { border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--card); }
+    .chat-sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .chat-sidebar-header h4 { font-weight: 700; font-size: 1rem; }
+    .chat-search { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+    .chat-search input { width: 100%; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 0.88rem; outline: none; background: var(--bg); }
+    .chat-search input:focus { border-color: var(--teal); }
+    .conv-list { flex: 1; overflow-y: auto; }
+    .conv-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background .15s; }
+    .conv-item:hover { background: var(--bg); }
+    .conv-item.active { background: #eff6ff; border-right: 3px solid var(--blue); }
+    .conv-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .conv-info { flex: 1; min-width: 0; }
+    .conv-name { font-weight: 600; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conv-preview { color: var(--muted); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .conv-time { font-size: 0.72rem; color: var(--muted); flex-shrink: 0; }
+    .conv-unread { background: var(--teal); color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+    /* Chat window */
+    .chat-window { display: flex; flex-direction: column; height: 100%; }
+    .chat-win-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; background: var(--card); }
+    .chat-win-header img { width: 38px; height: 38px; border-radius: 50%; }
+    .chat-win-name { font-weight: 700; font-size: 0.95rem; }
+    .chat-win-status { font-size: 0.78rem; color: var(--teal); }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; background: #f8fafc; }
+    .msg-wrap { display: flex; align-items: flex-end; gap: 8px; }
+    .msg-wrap.sent { flex-direction: row-reverse; }
+    .msg-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
+    .msg-bubble { max-width: 65%; padding: 10px 14px; border-radius: 16px; font-size: 0.9rem; line-height: 1.5; word-break: break-word; }
+    .msg-bubble.sent { background: var(--blue); color: #fff; border-bottom-right-radius: 4px; }
+    .msg-bubble.recv { background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .msg-time { font-size: 0.7rem; color: var(--muted); margin-top: 3px; text-align: right; }
+    .msg-time.recv { text-align: left; }
+    .typing-indicator { padding: 4px 20px; color: var(--muted); font-size: 0.8rem; font-style: italic; min-height: 20px; }
+    .chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--card); }
+    .chat-input-row { display: flex; gap: 10px; align-items: flex-end; }
+    .chat-input-row textarea { flex: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 0.92rem; outline: none; resize: none; max-height: 120px; font-family: inherit; line-height: 1.4; }
+    .chat-input-row textarea:focus { border-color: var(--teal); }
+    .send-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--blue); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; transition: background .15s; }
+    .send-btn:hover { background: #1e40af; }
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 12px; background: #f8fafc; }
+    .empty-state .icon { font-size: 4rem; }
+    .date-divider { text-align: center; margin: 8px 0; }
+    .date-divider span { background: var(--border); color: var(--muted); font-size: 0.75rem; padding: 3px 12px; border-radius: 20px; }
+    @media (max-width: 768px) { .chat-app { grid-template-columns: 1fr; } .chat-sidebar { display: none; } .chat-sidebar.show { display: flex; position: fixed; inset: 64px 0 0 0; z-index: 100; width: 100%; } }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="/" class="logo">Ethio<span>Gigs</span></a>
+    <div class="nav-links">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/group-chat.html">Group Chats</a>
+    </div>
+    <div class="nav-actions">
+      <button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button>
+      <div class="notif-bell" id="notifBell">🔔 <span class="notif-badge hidden" id="notifBadge">0</span></div>
+      <button class="btn btn-outline" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="chat-app">
+  <!-- Sidebar -->
+  <div class="chat-sidebar" id="chatSidebar">
+    <div class="chat-sidebar-header">
+      <h4>💬 Messages</h4>
+      <button class="btn btn-sm btn-primary" onclick="showNewChat()">+ New</button>
+    </div>
+    <div class="chat-search">
+      <input type="text" id="convSearch" placeholder="Search conversations..." oninput="filterConvs(this.value)" />
+    </div>
+    <div class="conv-list" id="convList">
+      <div class="loading-spinner" style="padding:20px;">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Chat window -->
+  <div class="chat-window" id="chatWindow">
+    <div class="empty-state">
+      <div class="icon">💬</div>
+      <p style="font-weight:600;">Select a conversation</p>
+      <p style="font-size:0.88rem;">or start a new one</p>
+      <button class="btn btn-primary" onclick="showNewChat()">Start a Conversation</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Chat Modal -->
+<div class="modal-overlay hidden" id="newChatModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--card);border-radius:var(--radius);padding:28px;width:100%;max-width:420px;box-shadow:var(--shadow-lg);">
+    <h3 style="font-weight:700;margin-bottom:8px;">New Message</h3>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">Search by @username, email, or user ID</p>
+    <div style="position:relative;">
+      <input type="text" id="newChatTarget" placeholder="@username or email" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95rem;outline:none;" oninput="previewChatTarget(this.value)" onkeydown="if(event.key==='Enter')startNewChat()" />
+    </div>
+    <div id="newChatPreview" style="margin-top:8px;min-height:24px;font-size:0.85rem;"></div>
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button class="btn btn-primary" onclick="startNewChat()">Start Chat</button>
+      <button class="btn btn-outline" onclick="document.getElementById('newChatModal').classList.add('hidden')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif-panel hidden" id="notifPanel"><div class="notif-header"><h4>Notifications</h4><button onclick="markAllRead()">Mark all read</button></div><div id="notifList"></div></div>
+
+<script src="js/app.js"></script>
+<script src="js/i18n.js"></script>
+<script>
+if (!isLoggedIn()) window.location.href = '/login.html';
+const user = getUser();
+let socket = null;
+let activeConvId = null;
+let allConvs = [];
+
+// ── Socket ─────────────────────────────────────────────────
+function connectSocket() {
+  socket = io({ auth: { token: getToken() } });
+  socket.on('connect', () => console.log('Socket connected'));
+  socket.on('connect_error', (e) => console.log('Socket error:', e.message));
+
+  socket.on('chat:receive', (msg) => {
+    if (msg.conversation_id === activeConvId) {
+      appendMessage(msg, msg.sender_id === user.id);
+      // Mark as read immediately since we're viewing this conversation
+      socket.emit('chat:read', { conversation_id: activeConvId });
+    } else {
+      updateConvPreview(msg.conversation_id, msg.content);
+      incrementUnreadBadge(msg.conversation_id);
+    }
+  });
+
+  socket.on('chat:typing', (data) => {
+    if (data.conversation_id === activeConvId && data.sender_id !== user.id) {
+      const el = document.getElementById('typingIndicator');
+      if (el) {
+        el.textContent = 'typing...';
+        clearTimeout(el._timer);
+        el._timer = setTimeout(() => { if (el) el.textContent = ''; }, 2500);
+      }
+    }
+  });
+
+  socket.on('chat:read', (data) => {
+    if (data.conversation_id === activeConvId) {
+      // Mark all sent messages as read visually
+      document.querySelectorAll('.msg-read-status').forEach(el => {
+        el.textContent = '✓✓';
+        el.style.color = 'var(--teal)';
+      });
+    }
+  });
+
+  socket.on('notification:new', () => {
+    loadNotifications();
+  });
+}
+
+// ── Load conversations ─────────────────────────────────────
+async function loadConversations() {
+  try {
+    const convs = await apiFetch(`/chat/conversations/${user.id}`);
+    allConvs = convs;
+    renderConvList(convs);
+    // Auto-open if URL has ?with=userId
+    const params = new URLSearchParams(window.location.search);
+    const withUser = params.get('with');
+    if (withUser) openOrCreateConv(parseInt(withUser));
+  } catch (err) {
+    document.getElementById('convList').innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center;">Could not load conversations.</div>';
+  }
+}
+
+function renderConvList(convs) {
+  const list = document.getElementById('convList');
+  if (!convs.length) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:0.88rem;">No conversations yet.<br/>Start one by messaging a freelancer or client.</div>';
+    return;
+  }
+  list.innerHTML = convs.map(c => {
+    const otherId = c.participant_a === user.id ? c.participant_b : c.participant_a;
+    const otherName = c.participant_a === user.id ? c.participant_b_name : c.participant_a_name;
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(otherName||'User')}&background=1E3A8A&color=fff&size=80`;
+    const timeAgo = c.last_message_time ? getTimeAgo(c.last_message_time) : '';
+    return `
+      <div class="conv-item ${c.id === activeConvId ? 'active' : ''}" id="conv-${c.id}" onclick="openConversation(${c.id}, '${(otherName||'User').replace(/'/g,"\\'")}', ${otherId})">
+        <img class="conv-avatar" src="${avatar}" alt="${otherName}" />
+        <div class="conv-info">
+          <div class="conv-name">${otherName || 'User'}</div>
+          <div class="conv-preview">${c.last_message || 'No messages yet'}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <div class="conv-time">${timeAgo}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function filterConvs(query) {
+  const filtered = allConvs.filter(c => {
+    const name = c.participant_a === user.id ? c.participant_b_name : c.participant_a_name;
+    return (name || '').toLowerCase().includes(query.toLowerCase());
+  });
+  renderConvList(filtered);
+}
+
+function updateConvPreview(convId, content) {
+  const el = document.querySelector(`#conv-${convId} .conv-preview`);
+  if (el) el.textContent = content;
+}
+
+// ── Open conversation ──────────────────────────────────────
+async function openConversation(convId, name, otherId) {
+  activeConvId = convId;
+  // Update sidebar active state
+  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`conv-${convId}`)?.classList.add('active');
+
+  const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1E3A8A&color=fff&size=80`;
+
+  document.getElementById('chatWindow').innerHTML = `
+    <div class="chat-win-header">
+      <img src="${avatar}" alt="${name}" />
+      <div>
+        <div class="chat-win-name">${name}</div>
+        <div class="chat-win-status">Active</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <a href="/profile.html?id=${otherId}" class="btn btn-sm btn-outline" target="_blank">View Profile</a>
+      </div>
+    </div>
+    <div class="chat-messages" id="messages"></div>
+    <div class="typing-indicator" id="typingIndicator"></div>
+    <div class="chat-input-area">
+      <div class="chat-input-row">
+        <label style="cursor:pointer;padding:8px;color:var(--muted);font-size:1.2rem;" title="Attach file (max 25MB)">
+          📎<input type="file" id="fileAttachInput" style="display:none;" onchange="sendFile()" accept="image/*,.pdf,.doc,.docx,.xlsx,.mp3,.wav,.ogg" />
+        </label>
+        <textarea id="msgInput" placeholder="Type a message..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" onclick="sendMessage()">➤</button>
+      </div>
+    </div>`;
+
+  // Load messages
+  try {
+    const messages = await apiFetch(`/chat/messages/${convId}`);
+    const container = document.getElementById('messages');
+    if (!messages.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;font-size:0.88rem;">No messages yet. Say hello! 👋</div>';
+    } else {
+      let lastDate = '';
+      messages.forEach(m => {
+        const msgDate = new Date(m.created_at).toLocaleDateString();
+        if (msgDate !== lastDate) {
+          container.innerHTML += `<div class="date-divider"><span>${msgDate}</span></div>`;
+          lastDate = msgDate;
+        }
+        appendMessage(m, m.sender_id === user.id);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+  } catch {}
+
+  document.getElementById('msgInput')?.focus();
+  // Mark messages as read when opening conversation
+  markConvRead(convId);
+}
+
+async function openOrCreateConv(otherId) {
+  try {
+    const res = await apiFetch('/chat/conversations/start', {
+      method: 'POST',
+      body: JSON.stringify({ other_user_id: otherId })
+    });
+    await loadConversations();
+    // Find the conversation and open it
+    const conv = allConvs.find(c => c.id === res.conversation_id);
+    if (conv) {
+      const otherName = conv.participant_a === user.id ? conv.participant_b_name : conv.participant_a_name;
+      openConversation(res.conversation_id, otherName || 'User', otherId);
+    } else {
+      // Reload and try again
+      const convs = await apiFetch(`/chat/conversations/${user.id}`);
+      allConvs = convs;
+      renderConvList(convs);
+      const found = convs.find(c => c.id === res.conversation_id);
+      if (found) {
+        const otherName = found.participant_a === user.id ? found.participant_b_name : found.participant_a_name;
+        openConversation(res.conversation_id, otherName || 'User', otherId);
+      }
+    }
+  } catch (err) {
+    toast(err.message || 'Could not start conversation', 'error');
+  }
+}
+
+// ── Append message ─────────────────────────────────────────
+function appendMessage(msg, isMine) {
+  const container = document.getElementById('messages');
+  if (!container) return;
+  const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender_name||'User')}&background=${isMine?'1E3A8A':'14B8A6'}&color=fff&size=60`;
+  const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  let contentHtml = '';
+  const ct = msg.content_type || 'text';
+  if (ct === 'image' && msg.file_url) {
+    contentHtml = `<img src="${msg.file_url}" style="max-width:220px;border-radius:8px;display:block;margin-bottom:4px;" onclick="window.open('${msg.file_url}','_blank')" />`;
+    if (msg.content) contentHtml += `<div>${escapeHtml(msg.content)}</div>`;
+  } else if (ct === 'document' && msg.file_url) {
+    const fname = msg.file_url.split('/').pop();
+    contentHtml = `<a href="${msg.file_url}" target="_blank" style="display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none;"><span style="font-size:1.4rem;">📄</span><span style="text-decoration:underline;">${escapeHtml(fname)}</span></a>`;
+  } else if (ct === 'voice' && msg.file_url) {
+    contentHtml = `<audio controls src="${msg.file_url}" style="max-width:200px;"></audio>`;
+  } else {
+    contentHtml = escapeHtml(msg.content);
+  }
+
+  const el = document.createElement('div');
+  el.className = `msg-wrap ${isMine ? 'sent' : ''}`;
+  el.dataset.msgId = msg.id;
+  el.innerHTML = `
+    ${!isMine ? `<img class="msg-avatar" src="${avatar}" alt="" />` : ''}
+    <div>
+      <div class="msg-bubble ${isMine ? 'sent' : 'recv'}">${contentHtml}</div>
+      <div class="msg-time ${isMine ? '' : 'recv'}">
+        ${time}
+        ${isMine ? `<span class="msg-read-status" style="margin-left:4px;font-size:0.7rem;color:var(--muted);">${msg.is_read ? '<span style="color:var(--teal);">✓✓</span>' : '✓'}</span>` : ''}
+      </div>
+    </div>`;
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+
+function incrementUnreadBadge(convId) {
+  const el = document.querySelector(`#conv-${convId} .conv-unread`);
+  if (el) {
+    el.textContent = parseInt(el.textContent || '0') + 1;
+    el.style.display = 'flex';
+  } else {
+    const convEl = document.getElementById(`conv-${convId}`);
+    if (convEl) {
+      const badge = document.createElement('div');
+      badge.className = 'conv-unread';
+      badge.textContent = '1';
+      convEl.appendChild(badge);
+    }
+  }
+}
+
+function escapeHtml(text) {
+  return (text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── Send message ───────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  } else if (socket && activeConvId) {
+    const otherId = getOtherUserId();
+    if (otherId) socket.emit('chat:typing', { recipient_id: otherId });
+  }
+}
+
+function getOtherUserId() {
+  const conv = allConvs.find(c => c.id === activeConvId);
+  if (!conv) return null;
+  return conv.participant_a === user.id ? conv.participant_b : conv.participant_a;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const content = input?.value?.trim();
+  if (!content || !activeConvId) return;
+  input.value = '';
+  input.style.height = 'auto';
+
+  const tempMsg = { conversation_id: activeConvId, sender_id: user.id, sender_name: user.name, content, content_type: 'text', created_at: new Date(), is_read: 0 };
+  appendMessage(tempMsg, true);
+
+  if (socket && socket.connected) {
+    socket.emit('chat:send', { conversation_id: activeConvId, content, content_type: 'text' });
+  } else {
+    try {
+      await apiFetch('/chat/messages', { method: 'POST', body: JSON.stringify({ conversation_id: activeConvId, content }) });
+    } catch (err) { toast('Failed to send', 'error'); }
+  }
+}
+
+async function sendFile() {
+  const input = document.getElementById('fileAttachInput');
+  if (!input || !input.files[0] || !activeConvId) return;
+  const file = input.files[0];
+
+  // Enforce 25 MB client-side
+  if (file.size > 25 * 1024 * 1024) {
+    toast('File must be under 25 MB', 'error');
+    input.value = '';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    toast('Uploading...', '');
+    const res = await fetch(`${window.location.origin}/api/chat/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw data;
+
+    const content = file.name;
+    const tempMsg = { conversation_id: activeConvId, sender_id: user.id, sender_name: user.name, content, content_type: data.content_type, file_url: data.file_url, created_at: new Date(), is_read: 0 };
+    appendMessage(tempMsg, true);
+
+    if (socket && socket.connected) {
+      socket.emit('chat:send', { conversation_id: activeConvId, content, content_type: data.content_type, file_url: data.file_url });
+    }
+    input.value = '';
+  } catch (err) {
+    toast(err.message || 'Upload failed', 'error');
+  }
+}
+
+async function markConvRead(convId) {
+  if (socket && socket.connected) {
+    socket.emit('chat:read', { conversation_id: convId });
+  }
+  // Clear unread badge
+  const badge = document.querySelector(`#conv-${convId} .conv-unread`);
+  if (badge) badge.remove();
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ── New chat ───────────────────────────────────────────────
+function showNewChat() {
+  document.getElementById('newChatModal').classList.remove('hidden');
+  document.getElementById('newChatTarget').focus();
+}
+
+async function startNewChat() {
+  const target = document.getElementById('newChatTarget').value.trim();
+  if (!target) { toast('Enter a username or email', 'error'); return; }
+  try {
+    let userId = null;
+    const isUsername = target.startsWith('@') || (!target.includes('@') && isNaN(parseInt(target)));
+    const isEmail = target.includes('@') && target.includes('.');
+    const isId = !isNaN(parseInt(target));
+
+    if (isUsername) {
+      const found = await apiFetch(`/users/search?username=${encodeURIComponent(target.replace('@',''))}`);
+      if (!found || !found.id) { toast(`@${target.replace('@','')} not found`, 'error'); return; }
+      userId = found.id;
+    } else if (isEmail) {
+      const found = await apiFetch(`/users/search?email=${encodeURIComponent(target)}`);
+      if (!found || !found.id) { toast('No user found with that email', 'error'); return; }
+      userId = found.id;
+    } else if (isId) {
+      userId = parseInt(target);
+    } else {
+      toast('Enter a valid @username, email, or user ID', 'error'); return;
+    }
+
+    if (userId === user.id) { toast("You can't message yourself", 'error'); return; }
+    document.getElementById('newChatModal').classList.add('hidden');
+    document.getElementById('newChatTarget').value = '';
+    document.getElementById('newChatPreview').textContent = '';
+    await openOrCreateConv(userId);
+  } catch (err) {
+    if (err.error === 'USER_NOT_FOUND') toast('User not found', 'error');
+    else toast(err.message || 'Failed to start chat', 'error');
+  }
+}
+
+let previewTimer = null;
+async function previewChatTarget(val) {
+  const preview = document.getElementById('newChatPreview');
+  if (!val || val.length < 2) { preview.textContent = ''; return; }
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    try {
+      let found = null;
+      if (val.startsWith('@') || (!val.includes('@') && isNaN(parseInt(val)))) {
+        found = await apiFetch(`/users/search?username=${encodeURIComponent(val.replace('@',''))}`).catch(() => null);
+      } else if (val.includes('@') && val.includes('.')) {
+        found = await apiFetch(`/users/search?email=${encodeURIComponent(val)}`).catch(() => null);
+      }
+      if (found && found.id) {
+        preview.innerHTML = `<span style="color:#16a34a;">✅ Found: <strong>${found.full_name}</strong>${found.username ? ` (@${found.username})` : ''} · ${found.role}</span>`;
+      }
+    } catch { preview.textContent = ''; }
+  }, 400);
+}
+
+function getTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
+
+connectSocket();
+loadConversations();
+loadNotifications();
+</script>
+</body>
+</html>

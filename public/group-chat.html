@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Group Chat — Ethio Gigs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    .group-layout { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 64px); }
+    .group-sidebar { border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .group-sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .group-sidebar-header h4 { font-weight: 700; }
+    .group-item { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; gap: 12px; align-items: center; transition: background .15s; }
+    .group-item:hover, .group-item.active { background: #eff6ff; }
+    .group-avatar { width: 42px; height: 42px; border-radius: 10px; background: linear-gradient(135deg, var(--blue), var(--teal)); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 1.1rem; flex-shrink: 0; }
+    .group-name { font-weight: 600; font-size: 0.95rem; }
+    .group-last { color: var(--muted); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+    .group-window { display: flex; flex-direction: column; }
+    .group-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .group-header-info h4 { font-weight: 700; }
+    .group-header-info small { color: var(--muted); font-size: 0.82rem; }
+    .group-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .gmsg { max-width: 72%; }
+    .gmsg-sent { align-self: flex-end; }
+    .gmsg-recv { align-self: flex-start; }
+    .gmsg-sender { font-size: 0.75rem; font-weight: 700; color: var(--teal); margin-bottom: 3px; }
+    .gmsg-bubble { padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; line-height: 1.5; }
+    .gmsg-sent .gmsg-bubble { background: var(--blue); color: #fff; border-bottom-right-radius: 4px; }
+    .gmsg-recv .gmsg-bubble { background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .gmsg-time { font-size: 0.72rem; color: var(--muted); margin-top: 3px; text-align: right; }
+    .group-input-bar { padding: 14px 16px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+    .group-input-bar input { flex: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; outline: none; font-size: 0.95rem; }
+    .group-input-bar input:focus { border-color: var(--teal); }
+    .members-panel { width: 220px; border-left: 1px solid var(--border); padding: 16px; overflow-y: auto; }
+    .members-panel h5 { font-weight: 700; margin-bottom: 12px; font-size: 0.9rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .member-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+    .member-dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; flex-shrink: 0; }
+    @media (max-width: 768px) { .group-layout { grid-template-columns: 1fr; } .group-sidebar { display: none; } .members-panel { display: none; } }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="/" class="logo">Ethio<span>Gigs</span></a>
+    <div class="nav-links"><a href="/dashboard.html">Dashboard</a><a href="/chat.html">Direct Messages</a></div>
+    <div class="nav-actions">
+      <button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button>
+      <button class="btn btn-outline" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="group-layout">
+  <!-- Sidebar: group list -->
+  <div class="group-sidebar">
+    <div class="group-sidebar-header">
+      <h4>💬 Group Chats</h4>
+      <button class="btn btn-sm btn-primary" onclick="showCreateGroup()">+ New</button>
+    </div>
+    <div id="groupList" style="flex:1;overflow-y:auto;">
+      <div class="loading-spinner" style="padding:20px;">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Main chat window -->
+  <div class="group-window" id="groupWindow">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted);">
+      <div style="font-size:3rem;">💬</div>
+      <p>Select a group to start chatting</p>
+      <button class="btn btn-primary" onclick="showCreateGroup()">Create a Group Chat</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Group Modal -->
+<div class="modal-overlay hidden" id="createGroupModal">
+  <div class="modal-box" style="max-width:520px;">
+    <h3 style="margin-bottom:16px;">Create Group Chat</h3>
+    <div class="form-group"><label>Group Name</label><input type="text" id="newGroupName" placeholder="e.g. Website Project Team" /></div>
+    <div class="form-group">
+      <label>Add Members (by User ID, comma separated)</label>
+      <input type="text" id="newGroupMembers" placeholder="e.g. 5, 12, 18" />
+      <small style="color:var(--muted);font-size:0.8rem;">You can also search and add from the marketplace</small>
+    </div>
+    <div class="form-group"><label>Linked Contract ID (optional)</label><input type="number" id="newGroupContract" placeholder="e.g. 3" /></div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-primary" onclick="createGroup()">Create Group</button>
+      <button class="btn btn-outline" onclick="document.getElementById('createGroupModal').classList.add('hidden')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/i18n.js"></script>
+<script>
+if (!isLoggedIn()) window.location.href = '/login.html';
+const user = getUser();
+let activeGroupId = null;
+let socket = null;
+
+function connectSocket() {
+  socket = io({ auth: { token: getToken() } });
+  socket.on('group:receive', (msg) => {
+    if (msg.group_id === activeGroupId) appendGroupMessage(msg, msg.sender_id === user.id);
+  });
+  socket.on('group:typing', () => {
+    const el = document.getElementById('groupTyping');
+    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2000); }
+  });
+}
+
+async function loadGroups() {
+  try {
+    const groups = await apiFetch('/group-chats');
+    const list = document.getElementById('groupList');
+    if (!groups.length) {
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:0.88rem;">No groups yet.<br/>Create one to collaborate!</div>';
+      return;
+    }
+    list.innerHTML = groups.map(g => `
+      <div class="group-item" id="gitem-${g.id}" onclick="openGroup(${g.id}, '${g.name.replace(/'/g, "\\'")}', ${g.member_count})">
+        <div class="group-avatar">${g.name.charAt(0).toUpperCase()}</div>
+        <div style="min-width:0;">
+          <div class="group-name">${g.name}</div>
+          <div class="group-last">${g.last_message || 'No messages yet'}</div>
+        </div>
+      </div>`).join('');
+  } catch {}
+}
+
+async function openGroup(groupId, name, memberCount) {
+  activeGroupId = groupId;
+  document.querySelectorAll('.group-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`gitem-${groupId}`)?.classList.add('active');
+
+  if (socket) socket.emit('group:join', groupId);
+
+  const win = document.getElementById('groupWindow');
+  win.innerHTML = `
+    <div class="group-header">
+      <div class="group-header-info">
+        <h4>${name}</h4>
+        <small>${memberCount} member${memberCount !== 1 ? 's' : ''}</small>
+      </div>
+      <button class="btn btn-sm btn-outline" onclick="loadGroupMembers(${groupId})">👥 Members</button>
+    </div>
+    <div class="group-messages" id="groupMessages"></div>
+    <div id="groupTyping" style="display:none;padding:4px 20px;color:var(--muted);font-size:0.82rem;">Someone is typing...</div>
+    <div class="group-input-bar">
+      <input type="text" id="groupInput" placeholder="Type a message..." onkeydown="handleGroupKey(event, ${groupId})" />
+      <button class="btn btn-primary" onclick="sendGroupMessage(${groupId})">Send</button>
+    </div>`;
+
+  try {
+    const messages = await apiFetch(`/group-chats/${groupId}/messages`);
+    const container = document.getElementById('groupMessages');
+    if (!messages.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;">No messages yet. Say hello! 👋</div>';
+    } else {
+      messages.forEach(m => appendGroupMessage(m, m.sender_id === user.id));
+      container.scrollTop = container.scrollHeight;
+    }
+  } catch {}
+}
+
+function appendGroupMessage(msg, isMine) {
+  const container = document.getElementById('groupMessages');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = `gmsg ${isMine ? 'gmsg-sent' : 'gmsg-recv'}`;
+  el.innerHTML = `
+    ${!isMine ? `<div class="gmsg-sender">${msg.sender_name || 'Member'}</div>` : ''}
+    <div class="gmsg-bubble">${msg.content}</div>
+    <div class="gmsg-time">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>`;
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+
+function handleGroupKey(e, groupId) {
+  if (e.key === 'Enter') sendGroupMessage(groupId);
+  else if (socket) socket.emit('group:typing', { group_id: groupId });
+}
+
+async function sendGroupMessage(groupId) {
+  const input = document.getElementById('groupInput');
+  const content = input?.value?.trim();
+  if (!content) return;
+  if (socket) {
+    socket.emit('group:send', { group_id: groupId, content });
+  } else {
+    const res = await apiFetch(`/group-chats/${groupId}/messages`, { method: 'POST', body: JSON.stringify({ content }) });
+    appendGroupMessage({ content, sender_id: user.id, sender_name: user.name, created_at: new Date() }, true);
+  }
+  input.value = '';
+}
+
+async function loadGroupMembers(groupId) {
+  try {
+    const group = await apiFetch(`/group-chats/${groupId}`);
+    const win = document.getElementById('groupWindow');
+    // Add members panel
+    let panel = document.getElementById('membersPanel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'membersPanel';
+      panel.className = 'members-panel';
+      win.appendChild(panel);
+    }
+    panel.innerHTML = `
+      <h5>Members (${group.members.length})</h5>
+      ${group.members.map(m => `
+        <div class="member-row">
+          <div class="member-dot"></div>
+          <div>
+            <div style="font-weight:600;">${m.full_name}</div>
+            <div style="font-size:0.75rem;color:var(--muted);">${m.role}${m.is_verified ? ' ✓' : ''}</div>
+          </div>
+        </div>`).join('')}
+      <div style="margin-top:12px;">
+        <input type="number" id="addMemberId" placeholder="Add by User ID" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;outline:none;margin-bottom:6px;" />
+        <button class="btn btn-sm btn-teal btn-full" onclick="addMember(${groupId})">+ Add Member</button>
+      </div>`;
+  } catch {}
+}
+
+async function addMember(groupId) {
+  const uid = document.getElementById('addMemberId').value;
+  if (!uid) return;
+  try {
+    await apiFetch(`/group-chats/${groupId}/members`, { method: 'POST', body: JSON.stringify({ user_id: parseInt(uid) }) });
+    toast('Member added!', 'success');
+    loadGroupMembers(groupId);
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+function showCreateGroup() {
+  document.getElementById('createGroupModal').classList.remove('hidden');
+}
+
+async function createGroup() {
+  const name = document.getElementById('newGroupName').value;
+  const membersRaw = document.getElementById('newGroupMembers').value;
+  const contract_id = document.getElementById('newGroupContract').value;
+  if (!name) { toast('Group name required', 'error'); return; }
+  const member_ids = membersRaw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  try {
+    const res = await apiFetch('/group-chats', { method: 'POST', body: JSON.stringify({ name, member_ids, contract_id: contract_id ? parseInt(contract_id) : null }) });
+    toast('Group created!', 'success');
+    document.getElementById('createGroupModal').classList.add('hidden');
+    document.getElementById('newGroupName').value = '';
+    document.getElementById('newGroupMembers').value = '';
+    document.getElementById('newGroupContract').value = '';
+    await loadGroups();
+    openGroup(res.group_id, name, member_ids.length + 1);
+  } catch (err) { toast(err.message || 'Failed to create group', 'error'); }
+}
+
+connectSocket();
+loadGroups();
+</script>
+</body>
+</html>

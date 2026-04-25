@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Ethio Gigs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<nav class="navbar"><div class="nav-container"><a href="/" class="logo">Ethio<span>Gigs</span></a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/marketplace.html" class="client-only hidden">Marketplace</a>
+    <a href="/marketplace.html" class="freelancer-only hidden">Browse Jobs</a>
+    <a href="/post-job.html" class="client-only hidden">Post a Job</a>
+    <a href="/dashboard.html">Dashboard</a>
+  </div>
+  <div class="nav-actions">
+    <button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button>
+    <div class="notif-bell" id="notifBell">🔔 <span class="notif-badge hidden" id="notifBadge">0</span></div>
+    <button class="btn btn-outline" id="logoutBtn">Logout</button>
+  </div>
+</div></nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-link active" onclick="showTab('overview')"><span class="icon">📊</span> <span data-i18n="dashboard.overview">Overview</span></div>
+    <div class="sidebar-link client-only hidden" onclick="showTab('jobs')"><span class="icon">💼</span> <span data-i18n="dashboard.my_jobs">My Jobs</span></div>
+    <div class="sidebar-link freelancer-only hidden" onclick="showTab('gigs')"><span class="icon">🎯</span> My Gigs</div>
+    <div class="sidebar-link" onclick="showTab('proposals')"><span class="icon">📩</span> <span data-i18n="dashboard.proposals">Proposals</span></div>
+    <div class="sidebar-link" onclick="showTab('contracts')"><span class="icon">📋</span> <span data-i18n="dashboard.contracts">Contracts</span></div>
+    <div class="sidebar-link" onclick="showTab('wallet')"><span class="icon">💰</span> <span data-i18n="dashboard.wallet">Wallet</span></div>
+    <div class="sidebar-link freelancer-only hidden" onclick="showTab('alerts')"><span class="icon">🔔</span> <span data-i18n="dashboard.job_alerts">Job Alerts</span></div>
+    <div class="sidebar-link" onclick="showTab('profile')"><span class="icon">👤</span> <span data-i18n="dashboard.profile">Profile</span></div>
+    <div class="sidebar-link" onclick="window.location='/chat.html'"><span class="icon">💬</span> <span data-i18n="nav.messages">Messages</span></div>
+    <div class="sidebar-link" onclick="window.location='/group-chat.html'"><span class="icon">👥</span> Group Chats</div>
+    <div class="sidebar-link" onclick="showTab('disputes')"><span class="icon">⚖️</span> <span data-i18n="dashboard.disputes">Disputes</span></div>
+    <div class="sidebar-link" id="sidebarVerifyLink" onclick="window.location='/verify.html'" style="border-top:1px solid var(--border);margin-top:8px;"><span class="icon">🪪</span> Get Verified</div>
+  </aside>
+  <main class="dashboard-main">
+    <!-- Overview -->
+    <div id="tab-overview">
+      <h2 class="dashboard-title" id="dashGreeting">Welcome back!</h2>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label" data-i18n="dashboard.wallet_balance">Wallet Balance</div><div class="stat-value" id="walletBalance">0 ETB</div></div>
+        <div class="stat-card"><div class="stat-label" data-i18n="dashboard.active_contracts">Active Jobs</div><div class="stat-value" id="activeJobs">0</div></div>
+        <div class="stat-card"><div class="stat-label" data-i18n="dashboard.pending_proposals">Pending Proposals</div><div class="stat-value" id="pendingProposals">0</div></div>
+        <div class="stat-card"><div class="stat-label" data-i18n="dashboard.avg_rating">Avg Rating</div><div class="stat-value" id="avgRating">—</div></div>
+      </div>
+      <div class="table-card">
+        <div class="table-card-header">Recent Activity</div>
+        <div id="recentActivity" style="padding:20px;color:var(--muted);">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Jobs (clients only) -->
+    <div id="tab-jobs" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h2 class="dashboard-title" style="margin:0;">My Jobs</h2>
+        <a href="/post-job.html" class="btn btn-primary">+ Post New Job</a>
+      </div>
+      <div class="table-card">
+        <table><thead><tr><th>Title</th><th>Budget</th><th>Status</th><th>Posted</th><th>Actions</th></tr></thead>
+        <tbody id="jobsTable"><tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- My Gigs (freelancers only) -->
+    <div id="tab-gigs" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h2 class="dashboard-title" style="margin:0;">My Gigs</h2>
+        <button class="btn btn-primary" onclick="showCreateGig()">+ Create New Gig</button>
+      </div>
+      <div id="gigsContainer">
+        <div class="loading-spinner">Loading...</div>
+      </div>
+      <!-- Create Gig Form (hidden by default) -->
+      <div id="createGigForm" class="table-card hidden" style="padding:28px;margin-top:20px;">
+        <h3 style="font-weight:700;margin-bottom:16px;">Create a New Gig</h3>
+        <div class="form-group"><label>Gig Title</label><input type="text" id="gigTitle" placeholder="e.g. I will design a professional logo" /></div>
+        <div class="form-group"><label>Description</label><textarea id="gigDesc" rows="3" placeholder="Describe what you offer..."></textarea></div>
+        <h4 style="margin:16px 0 12px;font-weight:700;">Packages</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+          <div style="border:1px solid var(--border);border-radius:8px;padding:16px;">
+            <div style="font-weight:700;color:var(--muted);margin-bottom:10px;">BASIC</div>
+            <div class="form-group"><label>Title</label><input type="text" id="pkg0title" placeholder="Basic package" /></div>
+            <div class="form-group"><label>Price (ETB)</label><input type="number" id="pkg0price" placeholder="500" /></div>
+            <div class="form-group"><label>Delivery (days)</label><input type="number" id="pkg0days" placeholder="3" /></div>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:8px;padding:16px;">
+            <div style="font-weight:700;color:var(--teal);margin-bottom:10px;">STANDARD</div>
+            <div class="form-group"><label>Title</label><input type="text" id="pkg1title" placeholder="Standard package" /></div>
+            <div class="form-group"><label>Price (ETB)</label><input type="number" id="pkg1price" placeholder="1500" /></div>
+            <div class="form-group"><label>Delivery (days)</label><input type="number" id="pkg1days" placeholder="7" /></div>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:8px;padding:16px;">
+            <div style="font-weight:700;color:var(--gold);margin-bottom:10px;">PREMIUM</div>
+            <div class="form-group"><label>Title</label><input type="text" id="pkg2title" placeholder="Premium package" /></div>
+            <div class="form-group"><label>Price (ETB)</label><input type="number" id="pkg2price" placeholder="3000" /></div>
+            <div class="form-group"><label>Delivery (days)</label><input type="number" id="pkg2days" placeholder="14" /></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:16px;">
+          <button class="btn btn-primary" onclick="createGig()">Create Gig</button>
+          <button class="btn btn-outline" onclick="document.getElementById('createGigForm').classList.add('hidden')">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proposals -->
+    <div id="tab-proposals" class="hidden">
+      <h2 class="dashboard-title" id="proposalsTitle">Proposals</h2>
+      <!-- Client view: received proposals -->
+      <div id="clientProposalsView">
+        <div class="table-card">
+          <table><thead><tr><th>Job</th><th>Freelancer</th><th>Bid</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="proposalsTable"><tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr></tbody></table>
+        </div>
+      </div>
+      <!-- Freelancer view: submitted proposals -->
+      <div id="freelancerProposalsView" class="hidden">
+        <div id="myProposalsList"><div class="loading-spinner">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- Wallet -->
+    <div id="tab-wallet" class="hidden">
+      <h2 class="dashboard-title">Wallet</h2>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Available Balance</div><div class="stat-value" id="walletBalanceFull">0 ETB</div></div>
+      </div>
+      <!-- Top-up Section -->
+      <div class="table-card" style="padding:24px;margin-bottom:20px;">
+        <h4 style="margin-bottom:4px;font-weight:700;">Add Funds</h4>
+        <p style="color:var(--muted);font-size:0.88rem;margin-bottom:16px;">Top up your wallet via Telebirr, CBE Birr, or card</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group" style="margin:0;"><label>Method</label>
+            <select id="topupMethod" onchange="updateTopupUI()">
+              <option value="telebirr">📱 Telebirr</option>
+              <option value="cbe_birr">🏦 CBE Birr</option>
+              <option value="visa">💳 Visa / Mastercard</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;" id="topupPhoneGroup"><label>Phone Number</label><input type="tel" id="topupPhone" placeholder="+251 9XX XXX XXX" /></div>
+        </div>
+        <div class="form-group"><label>Amount (ETB)</label><input type="number" id="topupAmount" placeholder="Enter amount" min="1" oninput="updateTopupFeePreview()" /></div>
+        <!-- Fee preview -->
+        <div id="topupFeePreview" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:0.88rem;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--muted);">Amount</span><span id="feePreviewAmount">0 ETB</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--muted);">Platform fee (0%)</span><span style="color:#16a34a;">Free</span></div>
+          <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #86efac;padding-top:6px;margin-top:4px;"><span>You receive</span><span id="feePreviewNet" style="color:var(--blue);">0 ETB</span></div>
+        </div>
+        <!-- Telebirr instructions -->
+        <div id="telebirrInstructions" style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:0.85rem;display:none;">
+          <strong style="color:#854d0e;">📱 Telebirr Payment Steps</strong>
+          <ol style="margin:8px 0 0;padding-left:18px;color:#78350f;line-height:2;">
+            <li>Open your Telebirr app</li>
+            <li>Go to <strong>Send Money → Pay Merchant</strong></li>
+            <li>Enter merchant code: <strong style="font-size:1rem;">*127*6#</strong></li>
+            <li>Enter the amount and confirm with your PIN</li>
+            <li>Click "I've Paid" below — your wallet updates instantly</li>
+          </ol>
+        </div>
+        <!-- CBE instructions -->
+        <div id="cbeInstructions" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:0.85rem;display:none;">
+          <strong style="color:#1d4ed8;">🏦 CBE Birr Payment Steps</strong>
+          <ol style="margin:8px 0 0;padding-left:18px;color:#1e40af;line-height:2;">
+            <li>Open your CBE Birr app or dial <strong>*847#</strong></li>
+            <li>Select <strong>Pay Bill</strong></li>
+            <li>Enter biller code: <strong style="font-size:1rem;">ETHIOGIGS</strong></li>
+            <li>Enter your registered phone number as reference</li>
+            <li>Confirm payment, then click "I've Paid" below</li>
+          </ol>
+        </div>
+        <button class="btn btn-teal" onclick="doTopup()">💳 Top Up Wallet</button>
+      </div>
+      <div class="table-card" style="padding:24px;">
+        <h4 style="margin-bottom:4px;font-weight:700;">Withdraw Funds</h4>
+        <p style="color:var(--muted);font-size:.85rem;margin-bottom:16px;">Withdrawals require admin approval and arrive within 3 business days.</p>
+        <div class="form-group"><label>Amount (ETB)</label><input type="number" id="withdrawAmount" placeholder="Enter amount" /></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group"><label>Method</label><select id="withdrawMethod"><option value="telebirr">📱 Telebirr</option><option value="cbe_birr">🏦 CBE Birr</option><option value="bank_transfer">🏛 Bank Transfer</option></select></div>
+          <div class="form-group"><label>Account / Phone Number</label><input type="text" id="withdrawAccount" placeholder="+251 9XX XXX XXX or account no." /></div>
+        </div>
+        <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#854d0e;">
+          ⚠️ Funds are reserved immediately and released to your account after admin approval.
+        </div>
+        <button class="btn btn-primary" onclick="doWithdraw()">💸 Request Withdrawal</button>
+      </div>
+      <div class="table-card" style="margin-top:20px;">
+        <div class="table-card-header">Transaction History</div>
+        <table><thead><tr><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th><th></th></tr></thead>
+        <tbody id="txTable"><tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- Contracts -->
+    <div id="tab-contracts" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <h2 class="dashboard-title" style="margin:0;">My Contracts</h2>
+        <a href="/templates.html" class="btn btn-outline">📋 Browse Templates</a>
+      </div>
+      <div id="contractsList"><div class="loading-spinner">Loading...</div></div>
+    </div>
+
+    <!-- Job Alerts (freelancers only) -->
+    <div id="tab-alerts" class="hidden">
+      <h2 class="dashboard-title">Job Alerts</h2>
+      <div class="table-card" style="padding:24px;margin-bottom:20px;">
+        <h4 style="font-weight:700;margin-bottom:4px;">Create Alert</h4>
+        <p style="color:var(--muted);font-size:0.88rem;margin-bottom:16px;">Get notified when jobs matching your criteria are posted.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group" style="margin:0;"><label>Category</label><input type="text" id="alertCategory" placeholder="e.g. Design, Development" /></div>
+          <div class="form-group" style="margin:0;"><label>Min Budget (ETB)</label><input type="number" id="alertMinBudget" placeholder="0" /></div>
+        </div>
+        <button class="btn btn-primary" onclick="createAlert()">+ Add Alert</button>
+      </div>
+      <div class="table-card">
+        <div class="table-card-header">Active Alerts</div>
+        <div id="alertsList" style="padding:8px;"><div class="loading-spinner">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- Profile -->
+    <div id="tab-profile" class="hidden">
+      <h2 class="dashboard-title">My Profile</h2>
+
+      <!-- hidden file inputs -->
+      <input type="file" id="coverFileInput" accept="image/*" style="display:none" onchange="uploadCoverPhoto(this)" />
+      <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="uploadAvatarPhoto(this)" />
+      <input type="file" id="portfolioFileInput" accept="image/*,application/pdf,.doc,.docx" style="display:none" onchange="uploadPortfolioFile(this)" />
+
+      <!-- ── Cover + Avatar card ── -->
+      <div class="table-card" style="padding:0;overflow:hidden;margin-bottom:16px;">
+        <!-- Cover photo -->
+        <div id="dashCoverWrap" style="height:160px;background:linear-gradient(135deg,#1E3A8A 0%,#0f766e 60%,#14B8A6 100%);position:relative;cursor:pointer;" onclick="document.getElementById('coverFileInput').click()">
+          <img id="dashCoverImg" src="" alt="Cover" style="width:100%;height:100%;object-fit:cover;display:none;" />
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0);transition:.2s;display:flex;align-items:center;justify-content:center;" id="coverHover">
+            <span style="background:rgba(0,0,0,.45);color:#fff;padding:8px 18px;border-radius:20px;font-size:.85rem;font-weight:600;opacity:0;transition:.2s;" id="coverHoverLabel">📷 Change Cover</span>
+          </div>
+        </div>
+        <!-- Avatar row -->
+        <div style="padding:0 24px 20px;position:relative;">
+          <!-- Avatar overlapping cover — pushed up -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:-44px;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div style="position:relative;display:inline-block;">
+              <div style="width:88px;height:88px;border-radius:50%;border:4px solid #fff;overflow:hidden;background:#e2e8f0;box-shadow:0 2px 12px rgba(0,0,0,.15);cursor:pointer;" onclick="document.getElementById('avatarFileInput').click()">
+                <img id="dashAvatarImg" src="" alt="Avatar" style="width:100%;height:100%;object-fit:cover;" />
+              </div>
+              <div onclick="document.getElementById('avatarFileInput').click()" style="position:absolute;bottom:2px;right:2px;width:26px;height:26px;background:#1E3A8A;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;font-size:.75rem;">📷</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;padding-bottom:4px;">
+              <a id="viewProfileBtn" href="#" target="_blank" class="btn btn-outline btn-sm">👁️ View Profile</a>
+              <button onclick="copyProfileLink()" class="btn btn-outline btn-sm">🔗 Share</button>
+              <a href="/verify.html" class="btn btn-outline btn-sm">🪪 Verify</a>
+            </div>
+          </div>
+          <!-- Name / badges -->
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">
+            <span id="previewName" style="font-weight:800;font-size:1.15rem;color:#1e293b;"></span>
+            <span id="previewVerified" class="hidden" style="background:#dcfce7;color:#15803d;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700;">✓ Verified</span>
+            <span id="previewLevel" style="padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700;"></span>
+          </div>
+          <div id="previewUsername" style="color:#0d9488;font-weight:600;font-size:.85rem;margin-bottom:2px;"></div>
+          <div id="previewTitle" style="color:#64748b;font-size:.88rem;"></div>
+        </div>
+      </div>
+
+      <!-- Quick stats row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px;">
+        <div class="stat-card" style="padding:14px;text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:var(--blue);" id="previewRate">—</div><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;margin-top:2px;">Rate/hr</div></div>
+        <div class="stat-card" style="padding:14px;text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:var(--teal);" id="previewAvailBadge">—</div><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;margin-top:2px;">Status</div></div>
+        <div class="stat-card" style="padding:14px;text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#f59e0b;" id="previewRating">—</div><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;margin-top:2px;">Rating</div></div>
+      </div>
+
+      <!-- ── Username ── -->
+      <div class="table-card" style="padding:20px;margin-bottom:14px;">
+        <h4 style="font-weight:700;margin-bottom:4px;">@ Username</h4>
+        <p style="color:var(--muted);font-size:.82rem;margin-bottom:12px;">Others can find and message you using @username</p>
+        <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+          <div style="flex:1;min-width:180px;position:relative;">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;">@</span>
+            <input type="text" id="usernameInput" placeholder="yourname" style="width:100%;padding:10px 12px 10px 28px;border:1.5px solid var(--border);border-radius:8px;font-size:.92rem;outline:none;" oninput="checkUsername(this.value)" />
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveUsername()" id="saveUsernameBtn">Set</button>
+        </div>
+        <div id="usernameStatus" style="font-size:.8rem;margin-top:6px;min-height:16px;"></div>
+        <div id="currentUsername" style="margin-top:6px;font-size:.85rem;color:var(--muted);"></div>
+      </div>
+
+      <!-- ── Edit profile info ── -->
+      <div class="table-card" style="padding:24px;margin-bottom:14px;">
+        <h4 style="font-weight:700;margin-bottom:16px;">✏️ Profile Info</h4>
+        <div class="form-group"><label data-i18n="profile.title">Professional Title</label><input type="text" id="profileTitle" placeholder="e.g. Full Stack Developer, Logo Designer..." /></div>
+        <div class="form-group"><label data-i18n="profile.bio">Bio (English)</label><textarea id="profileBio" rows="4" data-i18n-placeholder="profile.bio_placeholder" placeholder="Tell clients about yourself..."></textarea><div style="font-size:.75rem;color:var(--muted);margin-top:4px;" id="bioCharCount">0 / 1000</div></div>
+        <div class="form-group"><label>Bio (Amharic — አማርኛ)</label><textarea id="profileBioAm" rows="2" placeholder="ስለ እርስዎ ይናገሩ..." style="font-family:'Noto Sans Ethiopic',sans-serif;"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group"><label>Hourly Rate (ETB)</label><input type="number" id="profileRate" placeholder="e.g. 500" /></div>
+          <div class="form-group"><label>Availability</label>
+            <select id="profileAvail">
+              <option value="available">🟢 Available for work</option>
+              <option value="busy">🟡 Currently busy</option>
+              <option value="unavailable">🔴 Not available</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveProfile()">💾 Save Changes</button>
+      </div>
+
+      <!-- ── Skills ── -->
+      <div class="table-card" style="padding:24px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+          <h4 style="font-weight:700;margin:0;">🎯 Skills</h4>
+          <span style="font-size:.8rem;color:var(--muted);">Max 20 skills</span>
+        </div>
+        <div id="skillsTagList" style="margin-bottom:14px;min-height:32px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-group" style="margin:0;flex:1;min-width:160px;">
+            <label>Add Skill</label>
+            <select id="skillSelectInput" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;">
+              <option value="">Loading skills...</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;min-width:120px;">
+            <label>Level</label>
+            <select id="skillProficiency" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;">
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="expert">Expert</option>
+            </select>
+          </div>
+          <button class="btn btn-teal btn-sm" onclick="addSkill()" style="margin-bottom:1px;">+ Add</button>
+        </div>
+      </div>
+
+      <!-- ── Portfolio ── -->
+      <div class="table-card" style="padding:24px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+          <h4 style="font-weight:700;margin:0;">🖼️ Portfolio</h4>
+          <span style="font-size:.8rem;color:var(--muted);">Max 30 items</span>
+        </div>
+        <div id="portfolioGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:16px;"></div>
+        <!-- Add portfolio item -->
+        <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;">
+          <h5 style="font-weight:700;margin-bottom:12px;color:var(--muted);">Add Portfolio Item</h5>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div class="form-group" style="margin:0;"><label>Title</label><input type="text" id="portTitle" placeholder="Project name" /></div>
+            <div class="form-group" style="margin:0;"><label>Type</label>
+              <select id="portType" onchange="togglePortUrl(this.value)" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;">
+                <option value="image">Image Upload</option>
+                <option value="link">External Link</option>
+                <option value="document">Document</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" id="portUrlGroup" style="display:none;"><label>URL</label><input type="url" id="portUrl" placeholder="https://..." /></div>
+          <div class="form-group"><label>Description (optional)</label><input type="text" id="portDesc" placeholder="Brief description..." /></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('portfolioFileInput').click()" id="portUploadBtn">📎 Upload File</button>
+            <button class="btn btn-primary btn-sm" onclick="addPortfolioItem()">+ Add Item</button>
+          </div>
+          <div id="portFileStatus" style="font-size:.8rem;color:var(--teal);margin-top:6px;"></div>
+        </div>
+      </div>
+
+    </div>
+    <!-- Disputes -->
+    <div id="tab-disputes" class="hidden">
+      <h2 class="dashboard-title">My Disputes</h2>
+
+      <!-- Raise new dispute -->
+      <div class="table-card" style="padding:24px;margin-bottom:20px;">
+        <h4 style="font-weight:700;margin-bottom:4px;">Raise a Dispute</h4>
+        <p style="color:var(--muted);font-size:0.88rem;margin-bottom:16px;">If you have an issue with a contract, raise a dispute. Funds will be frozen until resolved by our team.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group" style="margin:0;"><label>Contract ID</label><input type="number" id="disputeContractId" placeholder="e.g. 12" /></div>
+        </div>
+        <div class="form-group"><label>Reason</label><textarea id="disputeReason" rows="3" placeholder="Describe the issue clearly. Include what was agreed and what went wrong..."></textarea></div>
+        <button class="btn btn-danger" onclick="raiseDispute()">⚖️ Raise Dispute</button>
+      </div>
+
+      <!-- Existing disputes -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <span>Your Disputes</span>
+          <button class="btn btn-sm btn-outline" onclick="loadDisputes()">Refresh</button>
+        </div>
+        <div id="disputesList" style="padding:8px;">
+          <div class="loading-spinner">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="notif-panel hidden" id="notifPanel"><div class="notif-header"><h4>Notifications</h4><button onclick="markAllRead()">Mark all read</button></div><div id="notifList"></div></div>
+
+<script src="js/app.js?v=2"></script>
+<script src="js/i18n.js?v=2"></script>
+<script>
+if (!isLoggedIn()) window.location.href = '/login.html';
+const user = getUser();
+
+// Apply role-based visibility immediately
+function applyRoles() {
+    const isClientUser = user?.active_role === 'client' || user?.role === 'client' || user?.role === 'admin';
+    const isFreelancerUser = user?.active_role === 'freelancer' || (user?.role === 'freelancer' && !user?.active_role);
+    document.querySelectorAll('.client-only').forEach(el => el.classList.toggle('hidden', !isClientUser));
+    document.querySelectorAll('.freelancer-only').forEach(el => el.classList.toggle('hidden', !isFreelancerUser));
+}
+applyRoles();
+
+function showTab(name) {
+  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('tab-' + name)?.classList.remove('hidden');
+  document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+  event?.target?.closest('.sidebar-link')?.classList.add('active');
+  if (name === 'jobs') loadJobs();
+  if (name === 'gigs') loadGigs();
+  if (name === 'proposals') loadProposals();
+  if (name === 'wallet') loadWallet();
+  if (name === 'profile') loadProfile();
+  if (name === 'disputes') loadDisputes();
+  if (name === 'contracts') loadContracts();
+  if (name === 'alerts') loadAlerts();
+}
+
+async function loadOverview() {
+  document.getElementById('dashGreeting').textContent = `Welcome back, ${user?.name || 'User'}!`;
+
+  // KYC verification banner — only insert once
+  if (!document.getElementById('kycBanner')) {
+    try {
+      const status = await apiFetch(`/kyc/status/${user.id}`);
+      const sidebarVerify = document.getElementById('sidebarVerifyLink');
+      const statsRow = document.querySelector('#tab-overview .stats-row');
+      if (status.is_verified || status.kyc_status === 'approved') {
+        if (sidebarVerify) sidebarVerify.innerHTML = '<span class="icon">✅</span> <span style="color:#16a34a;font-weight:700;">Verified</span>';
+      } else if (status.kyc_status === 'pending') {
+        if (sidebarVerify) sidebarVerify.innerHTML = '<span class="icon">⏳</span> Verification Pending';
+        const banner = document.createElement('div');
+        banner.id = 'kycBanner';
+        banner.style.cssText = 'background:#fef9c3;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:10px;';
+        banner.innerHTML = `<span style="font-size:1.4rem;">⏳</span><div><strong style="color:#854d0e;">Verification Under Review</strong><br/><span style="color:#64748b;font-size:0.88rem;">Your documents are being reviewed. You'll be notified within 24 hours.</span></div>`;
+        if (statsRow) statsRow.insertAdjacentElement('beforebegin', banner);
+      } else {
+        const banner = document.createElement('div');
+        banner.id = 'kycBanner';
+        banner.style.cssText = 'background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';
+        banner.innerHTML = `<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:1.4rem;">🪪</span><div><strong style="color:#1d4ed8;">Get Verified</strong><br/><span style="color:#64748b;font-size:0.88rem;">Upload your ID and selfie to get a verified badge on your profile.</span></div></div><a href="/verify.html" class="btn btn-primary btn-sm">Verify Now →</a>`;
+        if (statsRow) statsRow.insertAdjacentElement('beforebegin', banner);
+      }
+    } catch {}
+  }
+
+  // Wallet balance
+  try {
+    const bal = await apiFetch('/payments/wallet/balance');
+    const balStr = parseFloat(bal.balance).toFixed(2) + ' ETB';
+    document.getElementById('walletBalance').textContent = balStr;
+    document.getElementById('walletBalanceFull').textContent = balStr;
+  } catch {}
+
+  // Active jobs / contracts count
+  try {
+    const contracts = await apiFetch('/contracts');
+    const active = contracts.filter(c => c.status === 'active').length;
+    document.getElementById('activeJobs').textContent = active;
+  } catch {}
+
+  // Pending proposals count
+  try {
+    const isFreelancerUser = user?.active_role === 'freelancer' || (user?.role === 'freelancer' && !user?.active_role);
+    if (isFreelancerUser) {
+      const proposals = await apiFetch('/proposals/my');
+      document.getElementById('pendingProposals').textContent = proposals.filter(p => p.status === 'pending').length;
+    } else {
+      const jobs = await apiFetch(`/jobs?client_id=${user.id}`);
+      let count = 0;
+      for (const job of jobs.slice(0, 5)) {
+        try { const props = await apiFetch(`/proposals/job/${job.id}`); count += props.filter(p => p.status === 'pending').length; } catch {}
+      }
+      document.getElementById('pendingProposals').textContent = count;
+    }
+  } catch {}
+
+  // Avg rating
+  try {
+    const profile = await apiFetch(`/users/${user.id}`);
+    const rating = profile.profile?.avg_rating;
+    document.getElementById('avgRating').textContent = rating ? parseFloat(rating).toFixed(1) + ' ⭐' : '—';
+
+    // Profile completion indicator — only for freelancers, only insert once
+    const isFreelancerUser = user?.active_role === 'freelancer' || (user?.role === 'freelancer' && !user?.active_role);
+    if (isFreelancerUser && !document.getElementById('completionBanner')) {
+      const p = profile.profile || {};
+      const checks = [
+        { done: !!p.profile_photo_url, label: 'Profile photo' },
+        { done: !!p.bio && p.bio.length > 20, label: 'Bio' },
+        { done: profile.skills && profile.skills.length > 0, label: 'At least one skill' },
+        { done: !!p.title, label: 'Professional title' },
+        { done: !!p.hourly_rate, label: 'Hourly rate' },
+      ];
+      const done = checks.filter(c => c.done).length;
+      const pct = Math.round((done / checks.length) * 100);
+      if (pct < 100) {
+        const missing = checks.filter(c => !c.done).map(c => c.label);
+        const banner = document.createElement('div');
+        banner.id = 'completionBanner';
+        banner.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;';
+        banner.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+            <strong style="font-size:.95rem;">Profile Completion</strong>
+            <span style="font-weight:800;color:var(--blue);">${pct}%</span>
+          </div>
+          <div style="background:var(--bg);border-radius:6px;height:8px;overflow:hidden;margin-bottom:8px;">
+            <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--teal),var(--blue));border-radius:6px;"></div>
+          </div>
+          <div style="font-size:.82rem;color:var(--muted);">Missing: ${missing.join(', ')} · <a href="#" onclick="showTab('profile');return false;" style="color:var(--blue);">Complete profile →</a></div>`;
+        const statsRow = document.querySelector('#tab-overview .stats-row');
+        if (statsRow) statsRow.insertAdjacentElement('afterend', banner);
+      }
+    }
+  } catch {}
+
+  // Recent activity
+  try {
+    const txs = await apiFetch('/payments/history');
+    const activityEl = document.getElementById('recentActivity');
+    if (txs.length) {
+      const typeLabel = { escrow_fund:'Escrow funded', milestone_release:'Milestone paid', full_release:'Full payment', withdrawal:'Withdrawal', refund:'Refund', topup:'Wallet top-up' };
+      const isCredit = t => ['topup','milestone_release','full_release','refund'].includes(t.type);
+      activityEl.innerHTML = txs.slice(0, 5).map(t => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-weight:600;font-size:.9rem;">${typeLabel[t.type] || t.type}</div>
+            <div style="font-size:.78rem;color:var(--muted);">${new Date(t.created_at).toLocaleDateString()}</div>
+          </div>
+          <div style="font-weight:700;color:${isCredit(t)?'#16a34a':'var(--blue)'};">
+            ${isCredit(t)?'+':'−'}${parseFloat(t.amount).toFixed(2)} ETB
+          </div>
+        </div>`).join('');
+    } else {
+      activityEl.textContent = 'No recent activity yet.';
+    }
+  } catch { document.getElementById('recentActivity').textContent = 'No recent activity yet.'; }
+}
+
+async function loadGigs() {
+  const container = document.getElementById('gigsContainer');
+  try {
+    // Fetch gigs for this freelancer via marketplace with freelancer filter
+    const [myGigs] = await Promise.all([
+      apiFetch(`/gigs/my`).catch(() => null)
+    ]);
+    // Fallback: fetch from marketplace filtered by user
+    const gigs = myGigs || [];
+    if (!gigs.length) {
+      container.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:40px;text-align:center;color:var(--muted);">
+        <div style="font-size:2.5rem;margin-bottom:12px;">🎯</div>
+        <p style="margin-bottom:16px;">You haven't created any gigs yet.</p>
+        <button class="btn btn-primary" onclick="showCreateGig()">+ Create Your First Gig</button>
+      </div>`;
+      return;
+    }
+    container.innerHTML = gigs.map(g => `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:1rem;margin-bottom:4px;">${g.title}</div>
+          <div style="color:var(--muted);font-size:.85rem;margin-bottom:8px;">${(g.description||'').substring(0,100)}${g.description?.length>100?'...':''}</div>
+          <span class="status status-${g.status==='active'?'active':'pending'}">${g.status||'active'}</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-outline" onclick="toggleGigStatus(${g.id},'${g.status==='active'?'paused':'active'}')">
+            ${g.status==='active'?'⏸ Pause':'▶ Activate'}
+          </button>
+        </div>
+      </div>`).join('');
+  } catch {
+    container.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:40px;text-align:center;color:var(--muted);">
+      <div style="font-size:2.5rem;margin-bottom:12px;">🎯</div>
+      <p style="margin-bottom:16px;">Create your first gig to start getting hired by clients.</p>
+      <button class="btn btn-primary" onclick="showCreateGig()">+ Create Gig</button>
+    </div>`;
+  }
+}
+
+async function toggleGigStatus(gigId, newStatus) {
+  try {
+    await apiFetch(`/gigs/${gigId}`, { method: 'PUT', body: JSON.stringify({ status: newStatus }) });
+    toast(`Gig ${newStatus === 'active' ? 'activated' : 'paused'}`, 'success');
+    loadGigs();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+function showCreateGig() {
+  document.getElementById('createGigForm').classList.remove('hidden');
+  document.getElementById('createGigForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function createGig() {
+  const title = document.getElementById('gigTitle').value;
+  const description = document.getElementById('gigDesc').value;
+  if (!title) { toast('Gig title is required', 'error'); return; }
+  const types = ['basic', 'standard', 'premium'];
+  const packages = types.map((t, i) => ({
+    package_type: t,
+    title: document.getElementById(`pkg${i}title`).value || t,
+    price: parseFloat(document.getElementById(`pkg${i}price`).value) || 0,
+    delivery_days: parseInt(document.getElementById(`pkg${i}days`).value) || 1,
+    deliverables: []
+  })).filter(p => p.price > 0);
+  try {
+    await apiFetch('/gigs', { method: 'POST', body: JSON.stringify({ title, description, packages }) });
+    toast('Gig created!', 'success');
+    document.getElementById('createGigForm').classList.add('hidden');
+    loadGigs();
+  } catch (err) { toast(err.message || 'Failed to create gig', 'error'); }
+}
+
+async function loadJobs() {
+  const tbody = document.getElementById('jobsTable');
+  try {
+    const jobs = await apiFetch(`/jobs?client_id=${user.id}`);
+    tbody.innerHTML = jobs.length ? jobs.map(j => `
+      <tr>
+        <td><strong>${j.title}</strong></td>
+        <td>${j.budget_min}–${j.budget_max} ETB</td>
+        <td><span class="status status-${j.status}">${j.status}</span></td>
+        <td>${new Date(j.created_at).toLocaleDateString()}</td>
+        <td><a href="/job.html?id=${j.id}" class="btn btn-sm btn-outline">View</a></td>
+      </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No jobs yet. <a href="/post-job.html">Post one!</a></td></tr>';
+  } catch { tbody.innerHTML = '<tr><td colspan="5">Error loading jobs.</td></tr>'; }
+}
+
+async function loadProposals() {
+  const isFreelancerUser = user?.active_role === 'freelancer' || (user?.role === 'freelancer' && !user?.active_role);
+
+  if (isFreelancerUser) {
+    // Freelancer: show their submitted proposals
+    document.getElementById('proposalsTitle').textContent = 'My Submitted Proposals';
+    document.getElementById('clientProposalsView').classList.add('hidden');
+    document.getElementById('freelancerProposalsView').classList.remove('hidden');
+    const container = document.getElementById('myProposalsList');
+    try {
+      const proposals = await apiFetch('/proposals/my');
+      if (!proposals.length) {
+        container.innerHTML = `<div class="table-card" style="padding:40px;text-align:center;color:var(--muted);">
+          <div style="font-size:2.5rem;margin-bottom:12px;">📩</div>
+          <p>You haven't submitted any proposals yet.</p>
+          <a href="/marketplace.html" class="btn btn-primary" style="margin-top:12px;">Browse Jobs</a>
+        </div>`;
+        return;
+      }
+      container.innerHTML = proposals.map(p => `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px;${p.status==='accepted'?'border-left:4px solid #16a34a;':p.status==='rejected'?'border-left:4px solid #dc2626;':'border-left:4px solid var(--teal);'}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+            <div>
+              <a href="/job.html?id=${p.job_id}" style="font-weight:700;font-size:1rem;color:var(--blue);">${p.job_title}</a>
+              <div style="color:var(--muted);font-size:0.82rem;margin-top:2px;">Client: ${p.client_name} · ${new Date(p.created_at).toLocaleDateString()}</div>
+            </div>
+            <span class="status status-${p.status==='accepted'?'completed':p.status==='rejected'?'cancelled':p.status==='shortlisted'?'active':'pending'}">${p.status}</span>
+          </div>
+          <div style="display:flex;gap:20px;font-size:0.88rem;flex-wrap:wrap;">
+            <span>💰 Your bid: <strong>${p.bid_amount} ETB</strong></span>
+            <span>⏱ Delivery: <strong>${p.delivery_days} days</strong></span>
+            <span>📋 ${p.project_type || 'fixed'}</span>
+          </div>
+          ${p.cover_letter ? `<div style="margin-top:10px;color:var(--muted);font-size:0.88rem;background:var(--bg);padding:10px;border-radius:6px;">"${p.cover_letter}"</div>` : ''}
+          ${p.status === 'accepted' ? `<div style="margin-top:10px;"><button class="btn btn-sm btn-teal" onclick="viewOrCreateContract(${p.id}, ${p.job_id}, '${p.contract_id || ''}')">🎉 View Contract & Sign</button></div>` : ''}
+        </div>`).join('');
+    } catch (err) {
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;">Could not load proposals.</p>';
+    }
+  } else {
+    // Client: show received proposals
+    document.getElementById('proposalsTitle').textContent = 'Received Proposals';
+    document.getElementById('clientProposalsView').classList.remove('hidden');
+    document.getElementById('freelancerProposalsView').classList.add('hidden');
+    const tbody = document.getElementById('proposalsTable');
+    try {
+      const jobs = await apiFetch(`/jobs?client_id=${user.id}`);
+      if (!jobs.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No jobs posted yet. <a href="/post-job.html">Post a job</a> to receive proposals.</td></tr>';
+        return;
+      }
+      let allProposals = [];
+      for (const job of jobs) {
+        try {
+          const props = await apiFetch(`/proposals/job/${job.id}`);
+          props.forEach(p => { p._job_title = job.title; p._job_id = job.id; });
+          allProposals = allProposals.concat(props);
+        } catch {}
+      }
+      if (!allProposals.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No proposals received yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = allProposals.map(p => `
+        <tr>
+          <td><a href="/job.html?id=${p._job_id}" style="font-weight:600;color:var(--blue);">${p._job_title}</a></td>
+          <td>
+            <div style="font-weight:600;">${p.freelancer_name}</div>
+            ${p.freelancer_title ? `<div style="font-size:0.8rem;color:var(--muted);">${p.freelancer_title}</div>` : ''}
+            ${p.avg_rating ? `<div style="font-size:0.8rem;">⭐ ${parseFloat(p.avg_rating).toFixed(1)}</div>` : ''}
+          </td>
+          <td><strong>${p.bid_amount} ETB</strong>${p.delivery_days ? `<br/><small style="color:var(--muted);">${p.delivery_days} days</small>` : ''}</td>
+          <td><span class="status status-${p.status==='accepted'?'completed':p.status==='rejected'?'cancelled':p.status==='shortlisted'?'active':'pending'}">${p.status}</span></td>
+          <td style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${p.status==='pending'||p.status==='shortlisted' ? `
+              <button class="btn btn-sm btn-teal" onclick="updateProposal(${p.id},'accepted')">Accept</button>
+              <button class="btn btn-sm btn-outline" onclick="updateProposal(${p.id},'shortlisted')">Shortlist</button>
+              <button class="btn btn-sm btn-danger" onclick="updateProposal(${p.id},'rejected')">Reject</button>
+            ` : '—'}
+          </td>
+        </tr>`).join('');
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);">Error loading proposals.</td></tr>`;
+    }
+  }
+}
+
+async function viewOrCreateContract(proposalId, jobId, contractId) {
+  if (contractId && contractId !== 'null' && contractId !== '') {
+    window.location.href = `/contract.html?id=${contractId}`;
+    return;
+  }
+  // Contract doesn't exist yet — create it now
+  try {
+    toast('Creating contract...', '');
+    const res = await apiFetch('/contracts/create-from-proposal', {
+      method: 'POST',
+      body: JSON.stringify({ proposal_id: proposalId })
+    });
+    window.location.href = `/contract.html?id=${res.contract_id}`;
+  } catch (err) {
+    toast(err.message || 'Failed to create contract', 'error');
+  }
+}
+
+async function updateProposal(id, status) {
+  try {
+    await apiFetch(`/proposals/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+    toast(`Proposal ${status}`, 'success');
+    if (status === 'accepted') {
+      toast('Contract created! Redirecting...', 'success');
+    }
+    loadProposals();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+async function loadWallet() {
+  updateTopupUI(); // set initial state of payment instructions
+  try {
+    const bal = await apiFetch('/payments/wallet/balance');
+    document.getElementById('walletBalanceFull').textContent = parseFloat(bal.balance).toFixed(2) + ' ETB';
+    const txs = await apiFetch('/payments/history');
+    const tbody = document.getElementById('txTable');
+    tbody.innerHTML = txs.length ? txs.map(t => {
+      const typeLabel = { escrow_fund:'Escrow Funded', milestone_release:'Milestone Payment', full_release:'Full Payment', withdrawal:'Withdrawal', refund:'Refund', topup:'Wallet Top-up', fee:'Platform Fee' }[t.type] || t.type;
+      const isPendingWithdrawal = t.type === 'withdrawal' && t.status === 'pending';
+      const statusNote = isPendingWithdrawal ? ' (awaiting approval)' : '';
+      return `<tr>
+        <td>${typeLabel}</td>
+        <td>${parseFloat(t.amount).toFixed(2)} ETB</td>
+        <td>${t.method || '—'}</td>
+        <td><span class="status status-${t.status === 'completed' ? 'completed' : t.status === 'failed' ? 'cancelled' : 'pending'}">${t.status}${statusNote}</span></td>
+        <td>${new Date(t.created_at).toLocaleDateString()}</td>
+        <td>${isPendingWithdrawal ? `<button class="btn btn-sm btn-danger" onclick="cancelWithdrawal(${t.id})">Cancel</button>` : '—'}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted);">No transactions yet.</td></tr>';
+  } catch {}
+}
+
+async function doWithdraw() {
+  const amount = document.getElementById('withdrawAmount').value;
+  const method = document.getElementById('withdrawMethod').value;
+  const account_number = document.getElementById('withdrawAccount')?.value;
+  if (!amount || parseFloat(amount) <= 0) { toast('Enter a valid amount', 'error'); return; }
+  try {
+    const res = await apiFetch('/payments/wallet/withdraw', { method: 'POST', body: JSON.stringify({ amount: parseFloat(amount), method, account_number }) });
+    toast(res.message || 'Withdrawal request submitted — pending admin approval', 'success');
+    document.getElementById('withdrawAmount').value = '';
+    document.getElementById('withdrawAccount').value = '';
+    loadWallet();
+  } catch (err) { toast(err.error === 'INSUFFICIENT_BALANCE' ? 'Insufficient balance' : (err.message || 'Withdrawal failed'), 'error'); }
+}
+
+async function loadProfile() {
+  try {
+    const profile = await apiFetch(`/users/${user.id}`);
+    const p = profile.profile || {};
+
+    // Cover photo
+    const coverImg = document.getElementById('dashCoverImg');
+    if (p.cover_photo_url && coverImg) {
+      coverImg.src = p.cover_photo_url;
+      coverImg.style.display = 'block';
+    }
+
+    // Avatar
+    const avatarImg = document.getElementById('dashAvatarImg');
+    const avatarSrc = p.profile_photo_url
+      || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name)}&background=1E3A8A&color=fff&size=200`;
+    if (avatarImg) avatarImg.src = avatarSrc;
+
+    // Name / badges
+    const level = p.reputation_level || 'bronze';
+    const levelColors = { bronze:'#92400e', silver:'#475569', gold:'#854d0e', platinum:'#6d28d9', diamond:'#1d4ed8' };
+    const levelBg    = { bronze:'#fef3c7', silver:'#f1f5f9', gold:'#fef9c3', platinum:'#ede9fe', diamond:'#dbeafe' };
+    if (document.getElementById('previewName')) document.getElementById('previewName').textContent = profile.full_name;
+    if (document.getElementById('previewTitle')) document.getElementById('previewTitle').textContent = p.title || '';
+    if (document.getElementById('previewUsername') && profile.username) document.getElementById('previewUsername').textContent = '@' + profile.username;
+    if (profile.is_verified) document.getElementById('previewVerified')?.classList.remove('hidden');
+    const lvlEl = document.getElementById('previewLevel');
+    if (lvlEl) { lvlEl.textContent = level.charAt(0).toUpperCase() + level.slice(1); lvlEl.style.background = levelBg[level]; lvlEl.style.color = levelColors[level]; }
+
+    // Stats
+    const availMap = { available:'🟢 Available', busy:'🟡 Busy', unavailable:'🔴 Unavailable' };
+    if (document.getElementById('previewRate')) document.getElementById('previewRate').textContent = p.hourly_rate ? p.hourly_rate + ' ETB/hr' : '—';
+    if (document.getElementById('previewAvailBadge')) document.getElementById('previewAvailBadge').textContent = availMap[p.availability_status] || '—';
+    if (document.getElementById('previewRating')) document.getElementById('previewRating').textContent = p.avg_rating ? parseFloat(p.avg_rating).toFixed(1) + ' ⭐' : '—';
+
+    // Profile link
+    const profileUrl = `/profile.html?id=${user.id}`;
+    document.getElementById('viewProfileBtn')?.setAttribute('href', profileUrl);
+
+    // Form fields
+    document.getElementById('profileTitle').value = p.title || '';
+    document.getElementById('profileBio').value = p.bio || '';
+    document.getElementById('profileBioAm').value = p.bio_am || '';
+    document.getElementById('profileRate').value = p.hourly_rate || '';
+    document.getElementById('profileAvail').value = p.availability_status || 'available';
+
+    // Bio char counter
+    const bioEl = document.getElementById('profileBio');
+    const bioCount = document.getElementById('bioCharCount');
+    if (bioEl && bioCount) {
+      bioCount.textContent = `${bioEl.value.length} / 1000`;
+      bioEl.addEventListener('input', () => { bioCount.textContent = `${bioEl.value.length} / 1000`; });
+    }
+
+    // Username
+    const currentEl = document.getElementById('currentUsername');
+    if (currentEl) {
+      if (profile.username) {
+        currentEl.innerHTML = `Current: <strong style="color:var(--blue);">@${profile.username}</strong>`;
+        document.getElementById('usernameInput').value = profile.username;
+      } else {
+        currentEl.textContent = 'No username set yet.';
+      }
+    }
+
+    // Skills
+    renderSkillTags(profile.skills || []);
+    loadSkillOptions();
+
+    // Portfolio
+    renderPortfolioGrid(profile.portfolio || []);
+
+    // Cover hover effect
+    const coverWrap = document.getElementById('dashCoverWrap');
+    const hoverLabel = document.getElementById('coverHoverLabel');
+    if (coverWrap && hoverLabel) {
+      coverWrap.addEventListener('mouseenter', () => { hoverLabel.style.opacity = '1'; });
+      coverWrap.addEventListener('mouseleave', () => { hoverLabel.style.opacity = '0'; });
+    }
+  } catch (err) { console.error('loadProfile error', err); }
+}
+
+function renderSkillTags(skills) {
+  const container = document.getElementById('skillsTagList');
+  if (!container) return;
+  if (!skills.length) { container.innerHTML = '<span style="color:var(--muted);font-size:.85rem;">No skills added yet.</span>'; return; }
+  container.innerHTML = skills.map(s => `
+    <span style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;color:#1d4ed8;border-radius:20px;padding:5px 12px;font-size:.82rem;font-weight:600;margin:3px;">
+      ${s.name}
+      <span style="background:#dbeafe;border-radius:10px;padding:1px 6px;font-size:.72rem;">${s.proficiency || 'beginner'}</span>
+      <span onclick="removeSkill(${s.id})" style="cursor:pointer;color:#94a3b8;font-size:.9rem;margin-left:2px;" title="Remove">✕</span>
+    </span>`).join('');
+}
+
+async function loadSkillOptions() {
+  try {
+    const skills = await apiFetch('/skills');
+    const sel = document.getElementById('skillSelectInput');
+    if (!sel) return;
+    if (!skills || !skills.length) { sel.innerHTML = '<option value="">No skills available</option>'; return; }
+    sel.innerHTML = '<option value="">Select a skill...</option>' + skills.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  } catch {}
+}
+
+async function addSkill() {
+  const skillId = document.getElementById('skillSelectInput').value;
+  const proficiency = document.getElementById('skillProficiency').value;
+  if (!skillId) { toast('Select a skill first', 'error'); return; }
+  try {
+    await apiFetch(`/users/${user.id}/skills`, { method: 'POST', body: JSON.stringify({ skill_id: parseInt(skillId), proficiency }) });
+    toast('Skill added!', 'success');
+    const profile = await apiFetch(`/users/${user.id}`);
+    renderSkillTags(profile.skills || []);
+  } catch (err) {
+    toast(err.fields?.skills || err.message || 'Failed to add skill', 'error');
+  }
+}
+
+async function removeSkill(skillId) {
+  try {
+    await apiFetch(`/users/${user.id}/skills/${skillId}`, { method: 'DELETE' });
+    toast('Skill removed', 'success');
+    const profile = await apiFetch(`/users/${user.id}`);
+    renderSkillTags(profile.skills || []);
+  } catch { toast('Failed to remove skill', 'error'); }
+}
+
+function renderPortfolioGrid(items) {
+  const grid = document.getElementById('portfolioGrid');
+  if (!grid) return;
+  if (!items.length) { grid.innerHTML = '<div style="color:var(--muted);font-size:.85rem;grid-column:1/-1;">No portfolio items yet.</div>'; return; }
+  grid.innerHTML = items.map(item => {
+    const thumb = item.item_type === 'image' && item.url
+      ? `<img src="${item.url}" style="width:100%;height:100%;object-fit:cover;" />`
+      : item.item_type === 'link' ? '<div style="font-size:2rem;">🔗</div>'
+      : '<div style="font-size:2rem;">📄</div>';
+    return `
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;aspect-ratio:4/3;background:#f8fafc;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;" title="${item.title || ''}">
+        ${thumb}
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.5);opacity:0;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px;"
+             onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0">
+          <button onclick="removePortfolioItem(${item.id})" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.78rem;">Remove</button>
+        </div>
+        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:.72rem;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.title || ''}</div>
+      </div>`;
+  }).join('');
+}
+
+let _pendingPortfolioFile = null;
+function togglePortUrl(type) {
+  const urlGroup = document.getElementById('portUrlGroup');
+  const uploadBtn = document.getElementById('portUploadBtn');
+  if (type === 'link') { urlGroup.style.display = 'block'; uploadBtn.style.display = 'none'; }
+  else { urlGroup.style.display = 'none'; uploadBtn.style.display = 'inline-flex'; }
+}
+
+function uploadPortfolioFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _pendingPortfolioFile = file;
+  document.getElementById('portFileStatus').textContent = `📎 ${file.name} ready to upload`;
+}
+
+async function addPortfolioItem() {
+  const title = document.getElementById('portTitle').value;
+  const type = document.getElementById('portType').value;
+  const desc = document.getElementById('portDesc').value;
+  const url = document.getElementById('portUrl')?.value;
+
+  if (!title) { toast('Title is required', 'error'); return; }
+
+  try {
+    let fileUrl = url || null;
+
+    // Upload file if pending — use chat/upload for all file types (supports images + docs)
+    if (_pendingPortfolioFile && type !== 'link') {
+      const fd = new FormData();
+      fd.append('file', _pendingPortfolioFile);
+      const res = await fetch(`${API}/chat/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: fd
+      });
+      const data = await res.json();
+      if (!res.ok) throw data;
+      fileUrl = data.file_url || null;
+      _pendingPortfolioFile = null;
+      document.getElementById('portFileStatus').textContent = '';
+    }
+
+    await apiFetch(`/users/${user.id}/portfolio`, {
+      method: 'POST',
+      body: JSON.stringify({ title, description: desc, item_type: type, url: fileUrl })
+    });
+    toast('Portfolio item added!', 'success');
+    document.getElementById('portTitle').value = '';
+    document.getElementById('portDesc').value = '';
+    if (document.getElementById('portUrl')) document.getElementById('portUrl').value = '';
+    document.getElementById('portFileStatus').textContent = '';
+    const profile = await apiFetch(`/users/${user.id}`);
+    renderPortfolioGrid(profile.portfolio || []);
+  } catch (err) {
+    toast(err.fields?.portfolio || err.message || 'Failed to add item', 'error');
+  }
+}
+
+async function removePortfolioItem(itemId) {
+  try {
+    await apiFetch(`/users/${user.id}/portfolio/${itemId}`, { method: 'DELETE' });
+    toast('Item removed', 'success');
+    const profile = await apiFetch(`/users/${user.id}`);
+    renderPortfolioGrid(profile.portfolio || []);
+  } catch { toast('Failed to remove', 'error'); }
+}
+
+async function uploadCoverPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('cover', file);
+  try {
+    const res = await fetch(API + `/users/${user.id}/cover`, {
+      method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: formData
+    });
+    const data = await res.json();
+    if (data.url) {
+      const img = document.getElementById('dashCoverImg');
+      img.src = data.url; img.style.display = 'block';
+      toast('Cover photo updated!', 'success');
+    }
+  } catch { toast('Upload failed', 'error'); }
+}
+
+async function uploadAvatarPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('avatar', file);
+  try {
+    const res = await fetch(API + `/users/${user.id}/avatar`, {
+      method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: formData
+    });
+    const data = await res.json();
+    if (data.url) {
+      document.getElementById('dashAvatarImg').src = data.url;
+      toast('Profile photo updated!', 'success');
+    }
+  } catch { toast('Upload failed', 'error'); }
+}
+
+function copyProfileLink() {
+  const url = `${window.location.origin}/profile.html?id=${user.id}`;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => toast('Profile link copied!', 'success'));
+  } else {
+    toast('Link: ' + url, '');
+  }
+}
+
+let usernameCheckTimer = null;
+function checkUsername(val) {
+  const status = document.getElementById('usernameStatus');
+  const btn = document.getElementById('saveUsernameBtn');
+  const clean = val.toLowerCase().trim().replace('@', '');
+  if (!clean) { status.textContent = ''; return; }
+  if (!/^[a-z0-9_]{3,30}$/.test(clean)) {
+    status.innerHTML = '<span style="color:#dc2626;">❌ Only letters, numbers and underscores (3-30 chars)</span>';
+    if (btn) btn.disabled = true;
+    return;
+  }
+  status.innerHTML = '<span style="color:var(--muted);">Checking...</span>';
+  clearTimeout(usernameCheckTimer);
+  usernameCheckTimer = setTimeout(async () => {
+    try {
+      const res = await apiFetch(`/users/check-username/${clean}`);
+      if (res.available) {
+        status.innerHTML = '<span style="color:#16a34a;">✅ Available!</span>';
+        if (btn) btn.disabled = false;
+      } else {
+        status.innerHTML = `<span style="color:#dc2626;">❌ @${clean} is already taken</span>`;
+        if (btn) btn.disabled = true;
+      }
+    } catch { status.textContent = ''; }
+  }, 500);
+}
+
+async function saveUsername() {
+  const val = document.getElementById('usernameInput').value.trim().replace('@', '');
+  if (!val) { toast('Enter a username', 'error'); return; }
+  try {
+    const res = await apiFetch(`/users/${user.id}/username`, { method: 'PUT', body: JSON.stringify({ username: val }) });
+    toast(`Username @${res.username} set!`, 'success');
+    document.getElementById('currentUsername').innerHTML = `Current username: <strong style="color:var(--blue);">@${res.username}</strong>`;
+    document.getElementById('usernameStatus').innerHTML = '<span style="color:#16a34a;">✅ Saved!</span>';
+  } catch (err) {
+    if (err.error === 'USERNAME_TAKEN') toast('That username is already taken', 'error');
+    else toast(err.message || 'Failed to set username', 'error');
+  }
+}
+
+async function loadDisputes() {
+  const container = document.getElementById('disputesList');
+  if (!container) return;
+  try {
+    const disputes = await apiFetch('/disputes/my');
+    if (!disputes.length) {
+      container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);">No disputes raised. We hope it stays that way! 🤝</div>';
+      return;
+    }
+    container.innerHTML = disputes.map(d => `
+      <div style="border:1px solid var(--border);border-radius:8px;padding:18px;margin:8px;${d.status === 'open' ? 'border-left:4px solid #f59e0b;' : d.status === 'resolved' ? 'border-left:4px solid #16a34a;' : 'border-left:4px solid #3b82f6;'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+          <div>
+            <strong style="font-size:1rem;">${d.job_title || 'Contract #' + d.contract_id}</strong>
+            <div style="color:var(--muted);font-size:0.82rem;margin-top:2px;">Raised by ${d.raised_by_name} · ${new Date(d.created_at).toLocaleDateString()}</div>
+          </div>
+          <span class="status ${d.status === 'open' ? 'status-pending' : d.status === 'resolved' ? 'status-completed' : 'status-active'}">${d.status.replace('_', ' ')}</span>
+        </div>
+        <div style="background:var(--bg);border-radius:6px;padding:12px;margin-bottom:10px;">
+          <div style="font-size:0.85rem;font-weight:600;color:var(--muted);margin-bottom:4px;">REASON</div>
+          <p style="font-size:0.9rem;margin:0;">${d.reason}</p>
+        </div>
+        ${d.status === 'resolved' ? `
+          <div style="background:#f0fdf4;border-radius:6px;padding:12px;">
+            <div style="font-size:0.85rem;font-weight:600;color:#16a34a;margin-bottom:4px;">✅ RESOLUTION</div>
+            <p style="font-size:0.9rem;margin:0;">${d.resolution}</p>
+          </div>` : ''}
+        <div style="display:flex;gap:16px;margin-top:10px;font-size:0.85rem;color:var(--muted);">
+          <span>💰 Escrow: <strong>${parseFloat(d.escrow_balance || 0).toFixed(2)} ETB</strong></span>
+          <span>🔒 Status: <strong>${d.escrow_status || 'N/A'}</strong></span>
+        </div>
+      </div>`).join('');
+  } catch (err) {
+    container.innerHTML = '<div style="padding:20px;color:var(--muted);">Could not load disputes.</div>';
+  }
+}
+
+async function raiseDispute() {
+  const contract_id = document.getElementById('disputeContractId').value;
+  const reason = document.getElementById('disputeReason').value;
+  if (!contract_id || !reason) { toast('Contract ID and reason are required', 'error'); return; }
+  if (reason.length < 20) { toast('Please provide a more detailed reason (at least 20 characters)', 'error'); return; }
+  try {
+    await apiFetch('/disputes', { method: 'POST', body: JSON.stringify({ contract_id: parseInt(contract_id), reason }) });
+    toast('Dispute raised. Escrow funds are now frozen pending review.', 'success');
+    document.getElementById('disputeContractId').value = '';
+    document.getElementById('disputeReason').value = '';
+    loadDisputes();
+  } catch (err) {
+    toast(err.error === 'CONTRACT_NOT_FOUND' ? 'Contract not found. Check the ID.' : (err.message || 'Failed to raise dispute'), 'error');
+  }
+}
+
+async function doTopup() {
+  const amount = document.getElementById('topupAmount').value;
+  const method = document.getElementById('topupMethod').value;
+  const phone_number = document.getElementById('topupPhone').value;
+  if (!amount || parseFloat(amount) <= 0) { toast('Enter a valid amount', 'error'); return; }
+  try {
+    const res = await apiFetch('/payments/topup', { method: 'POST', body: JSON.stringify({ amount: parseFloat(amount), method, phone_number }) });
+    toast(`${amount} ETB added! New balance: ${parseFloat(res.new_balance).toFixed(2)} ETB`, 'success');
+    document.getElementById('topupAmount').value = '';
+    loadWallet();
+  } catch (err) { toast(err.message || 'Top-up failed', 'error'); }
+}
+
+function updateTopupUI() {
+  const method = document.getElementById('topupMethod').value;
+  document.getElementById('telebirrInstructions').style.display = method === 'telebirr' ? 'block' : 'none';
+  document.getElementById('cbeInstructions').style.display = method === 'cbe_birr' ? 'block' : 'none';
+  document.getElementById('topupPhoneGroup').style.display = method === 'visa' ? 'none' : 'block';
+}
+
+function updateTopupFeePreview() {
+  const amount = parseFloat(document.getElementById('topupAmount').value) || 0;
+  const preview = document.getElementById('topupFeePreview');
+  if (amount > 0) {
+    preview.style.display = 'block';
+    document.getElementById('feePreviewAmount').textContent = amount.toFixed(2) + ' ETB';
+    document.getElementById('feePreviewNet').textContent = amount.toFixed(2) + ' ETB';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function cancelWithdrawal(txId) {
+  if (!confirm('Cancel this withdrawal request? The amount will be returned to your wallet.')) return;
+  try {
+    await apiFetch(`/wallet/withdraw/${txId}/cancel`, { method: 'POST' });
+    toast('Withdrawal cancelled. Funds returned to wallet.', 'success');
+    loadWallet();
+  } catch (err) { toast(err.message || 'Could not cancel withdrawal', 'error'); }
+}
+
+async function loadContracts() {
+  const container = document.getElementById('contractsList');
+  try {
+    const contracts = await apiFetch('/contracts');
+    if (!contracts.length) {
+      container.innerHTML = `<div class="table-card" style="padding:40px;text-align:center;color:var(--muted);">
+        <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
+        <p>No contracts yet. Contracts are created when a proposal is accepted.</p>
+      </div>`;
+      return;
+    }
+    container.innerHTML = `<div class="table-card"><table>
+      <thead><tr><th>Job</th><th>Client</th><th>Freelancer</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${contracts.map(c => `
+        <tr>
+          <td><strong>${c.job_title || 'Contract #' + c.id}</strong></td>
+          <td>${c.client_name || '—'}</td>
+          <td>${c.freelancer_name || '—'}</td>
+          <td>${parseFloat(c.total_amount || 0).toFixed(2)} ETB</td>
+          <td><span class="status status-${c.status}">${c.status}</span></td>
+          <td><a href="/contract.html?id=${c.id}" class="btn btn-sm btn-outline">View</a></td>
+        </tr>`).join('')}
+      </tbody></table></div>`;
+  } catch (err) {
+    container.innerHTML = '<p style="color:var(--muted);text-align:center;">Could not load contracts.</p>';
+  }
+}
+
+async function loadAlerts() {
+  const container = document.getElementById('alertsList');
+  try {
+    const alerts = await apiFetch('/job-alerts');
+    if (!alerts.length) {
+      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);">No alerts yet. Create one above!</div>';
+      return;
+    }
+    container.innerHTML = alerts.map(a => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);">
+        <div>
+          ${a.category ? `<span class="badge badge-silver" style="margin-right:6px;">${a.category}</span>` : ''}
+          ${a.skill_name ? `<span class="badge badge-verified">${a.skill_name}</span>` : ''}
+          ${a.min_budget > 0 ? `<span style="color:var(--muted);font-size:0.85rem;margin-left:8px;">Min: ${a.min_budget} ETB</span>` : ''}
+          ${!a.category && !a.skill_name ? '<span style="color:var(--muted);">All jobs</span>' : ''}
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="deleteAlert(${a.id})">Remove</button>
+      </div>`).join('');
+  } catch {
+    container.innerHTML = '<div style="padding:20px;color:var(--muted);">Could not load alerts.</div>';
+  }
+}
+
+async function createAlert() {
+  const category = document.getElementById('alertCategory').value;
+  const min_budget = document.getElementById('alertMinBudget').value;
+  try {
+    await apiFetch('/job-alerts', { method: 'POST', body: JSON.stringify({ category: category || null, min_budget: parseFloat(min_budget) || 0 }) });
+    toast('Alert created!', 'success');
+    document.getElementById('alertCategory').value = '';
+    document.getElementById('alertMinBudget').value = '';
+    loadAlerts();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+async function deleteAlert(id) {
+  try {
+    await apiFetch(`/job-alerts/${id}`, { method: 'DELETE' });
+    toast('Alert removed', 'success');
+    loadAlerts();
+  } catch { toast('Failed to remove', 'error'); }
+}
+
+loadOverview();
+loadNotifications();
+
+async function saveProfile() {
+  const body = {
+    title: document.getElementById('profileTitle').value,
+    bio: document.getElementById('profileBio').value,
+    bio_am: document.getElementById('profileBioAm').value,
+    hourly_rate: document.getElementById('profileRate').value,
+    availability_status: document.getElementById('profileAvail').value
+  };
+  try {
+    await apiFetch(`/users/${user.id}/profile`, { method: 'PUT', body: JSON.stringify(body) });
+    toast('Profile saved!', 'success');
+  } catch (err) { toast(err.fields?.bio || 'Save failed', 'error'); }
+}
+
+async function loadNotifications() {
+  if (!user) return;
+  try {
+    const data = await apiFetch(`/notifications/${user.id}`);
+    const badge = document.getElementById('notifBadge');
+    if (badge) {
+      badge.textContent = data.unreadCount;
+      badge.classList.toggle('hidden', data.unreadCount === 0);
+    }
+    const list = document.getElementById('notifList');
+    if (list) {
+      list.innerHTML = data.notifications.slice(0, 15).map(n => {
+        const isKyc = n.event_type === 'kyc_approved' || n.event_type === 'kyc_rejected';
+        return `<div class="notif-item ${n.is_read ? '' : 'unread'}" onclick="markRead(${n.id})" style="${isKyc ? 'border-left:3px solid ' + (n.event_type === 'kyc_approved' ? '#16a34a' : '#dc2626') + ';' : ''}">
+          <strong>${n.title}</strong>
+          <small style="display:block;margin-top:3px;color:var(--muted);">${n.message}</small>
+          <small style="color:var(--border);font-size:0.75rem;">${new Date(n.created_at).toLocaleString()}</small>
+        </div>`;
+      }).join('') || '<div class="notif-item"><small>No notifications yet</small></div>';
+    }
+  } catch {}
+}
+</script>
+</body>
+</html>

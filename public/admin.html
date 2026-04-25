@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel — Ethio Gigs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<nav class="navbar"><div class="nav-container"><a href="/" class="logo">Ethio<span>Gigs</span></a><div class="nav-links"><a href="/admin.html" style="color:var(--blue);font-weight:700;">Admin Panel</a></div><div class="nav-actions"><button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button><button class="btn btn-outline" id="logoutBtn">Logout</button></div></div></nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-link" onclick="showTab('stats')"><span class="icon">📊</span> Stats</div>
+    <div class="sidebar-link" onclick="showTab('users')"><span class="icon">👥</span> Users</div>
+    <div class="sidebar-link" onclick="showTab('fraud')"><span class="icon">🚨</span> Fraud Detection</div>
+    <div class="sidebar-link" onclick="showTab('kyc')"><span class="icon">🪪</span> KYC Queue</div>
+    <div class="sidebar-link" onclick="showTab('disputes')"><span class="icon">⚖️</span> Disputes</div>
+    <div class="sidebar-link" onclick="showTab('moderation')"><span class="icon">🛡️</span> Moderation</div>
+    <div class="sidebar-link" onclick="showTab('escrow')"><span class="icon">🔒</span> Escrow</div>
+    <div class="sidebar-link" onclick="showTab('withdrawals')"><span class="icon">💸</span> Withdrawals <span id="withdrawalBadge" style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:.72rem;font-weight:700;margin-left:4px;display:none;">0</span></div>
+    <div class="sidebar-link" onclick="showTab('announce')"><span class="icon">📢</span> Announcements</div>
+  </aside>
+  <main class="dashboard-main">
+
+    <!-- Stats -->
+    <div id="tab-stats">
+      <h2 class="dashboard-title">Platform Overview</h2>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value" id="aStatUsers">—</div></div>
+        <div class="stat-card"><div class="stat-label">Active Jobs</div><div class="stat-value" id="aStatJobs">—</div></div>
+        <div class="stat-card"><div class="stat-label">Transaction Volume</div><div class="stat-value" id="aStatVol">—</div></div>
+        <div class="stat-card"><div class="stat-label">Dispute Resolution</div><div class="stat-value" id="aStatDisp">—</div></div>
+      </div>
+      <div class="stats-row" style="margin-top:12px;">
+        <div class="stat-card" style="border-left:4px solid #dc2626;"><div class="stat-label">🚨 Fraud Flags</div><div class="stat-value" id="aStatFraud" style="color:#dc2626;">—</div></div>
+        <div class="stat-card" style="border-left:4px solid #f59e0b;"><div class="stat-label">⚠️ High Severity</div><div class="stat-value" id="aStatFraudHigh" style="color:#f59e0b;">—</div></div>
+        <div class="stat-card" style="border-left:4px solid #16a34a;"><div class="stat-label">✅ Resolved Flags</div><div class="stat-value" id="aStatFraudResolved" style="color:#16a34a;">—</div></div>
+        <div class="stat-card" style="border-left:4px solid #6d28d9;"><div class="stat-label">👤 Flagged Users</div><div class="stat-value" id="aStatFlaggedUsers" style="color:#6d28d9;">—</div></div>
+      </div>
+      <div class="stats-row" style="margin-top:12px;">
+        <div class="stat-card" style="border-left:4px solid #0891b2;cursor:pointer;" onclick="showTab('withdrawals')">
+          <div class="stat-label">💸 Pending Withdrawals</div>
+          <div class="stat-value" id="aStatWithdrawals" style="color:#0891b2;">—</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:2px;" id="aStatWithdrawalVol"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Withdrawals -->
+    <div id="tab-withdrawals" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <h2 class="dashboard-title" style="margin:0;">💸 Withdrawal Requests</h2>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="loadWithdrawals('pending')">Pending</button>
+          <button class="btn btn-outline btn-sm" onclick="loadWithdrawals('all')">History</button>
+        </div>
+      </div>
+
+      <!-- Summary bar -->
+      <div id="withdrawalSummary" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 20px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:.88rem;color:#1d4ed8;font-weight:600;">Loading summary...</span>
+      </div>
+
+      <div class="table-card">
+        <div class="table-card-header">
+          <span id="withdrawalTableTitle">Pending Requests</span>
+          <button class="btn btn-sm btn-outline" onclick="loadWithdrawals('pending')">Refresh</button>
+        </div>
+        <div id="withdrawalsList" style="padding:8px;"><div class="loading-spinner">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- Fraud Detection -->
+    <div id="tab-fraud" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <h2 class="dashboard-title" style="margin:0;">🚨 Fraud Detection</h2>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="scanUserId" placeholder="User ID to scan" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;outline:none;width:160px;" />
+          <button class="btn btn-primary btn-sm" onclick="manualScan()">🔍 Scan User</button>
+        </div>
+      </div>
+
+      <div id="fraudScanResult" class="hidden" style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:16px;"></div>
+
+      <div class="table-card">
+        <div class="table-card-header">
+          <span>Active Fraud Flags</span>
+          <button class="btn btn-sm btn-outline" onclick="loadFraud()">Refresh</button>
+        </div>
+        <div id="fraudList" style="padding:8px;"><div class="loading-spinner">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- Users -->
+    <div id="tab-users" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h2 class="dashboard-title" style="margin:0;">User Management</h2>
+        <input type="text" id="userSearch" placeholder="Search users..." style="padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;outline:none;" oninput="loadUsers()" />
+      </div>
+      <div class="table-card">
+        <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>KYC</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="usersTable"><tr><td colspan="6" style="text-align:center;color:var(--muted);">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- KYC -->
+    <div id="tab-kyc" class="hidden">
+      <h2 class="dashboard-title">KYC Review Queue</h2>
+      <div class="table-card">
+        <table><thead><tr><th>User</th><th>Email</th><th>Documents</th><th>Submitted</th><th>Actions</th></tr></thead>
+        <tbody id="kycTable"><tr><td colspan="4" style="text-align:center;color:var(--muted);">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- Disputes -->
+    <div id="tab-disputes" class="hidden">
+      <h2 class="dashboard-title">Dispute Queue</h2>
+      <div class="table-card">
+        <div id="disputesList" style="padding:8px;"><div class="loading-spinner">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- Moderation -->
+    <div id="tab-moderation" class="hidden">
+      <h2 class="dashboard-title">Content Moderation</h2>
+      <div class="table-card">
+        <div class="table-card-header">
+          <span>Reported Messages</span>
+          <button class="btn btn-sm btn-outline" onclick="loadModeration()">Refresh</button>
+        </div>
+        <div id="moderationList" style="padding:8px;"><div class="loading-spinner">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- Escrow -->
+    <div id="tab-escrow" class="hidden">
+      <h2 class="dashboard-title">Escrow Contracts</h2>
+      <div class="table-card">
+        <table><thead><tr><th>ID</th><th>Client</th><th>Freelancer</th><th>Balance</th><th>Status</th></tr></thead>
+        <tbody id="escrowTable"><tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- Announcements -->
+    <div id="tab-announce" class="hidden">
+      <h2 class="dashboard-title">Send Announcement</h2>
+      <div class="table-card" style="padding:28px;">
+        <div class="form-group">
+          <label>Target Audience</label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:8px;">
+            <label style="display:flex;align-items:center;gap:8px;padding:12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;" id="targetAll">
+              <input type="radio" name="target" value="all" checked onchange="selectTarget(this)" style="accent-color:var(--blue);"> 🌍 Everyone
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;" id="targetFreelancers">
+              <input type="radio" name="target" value="freelancers" onchange="selectTarget(this)" style="accent-color:var(--blue);"> 💼 Freelancers
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;" id="targetClients">
+              <input type="radio" name="target" value="clients" onchange="selectTarget(this)" style="accent-color:var(--blue);"> 🏢 Clients
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;" id="targetUser">
+              <input type="radio" name="target" value="user" onchange="selectTarget(this)" style="accent-color:var(--blue);"> 👤 Specific User
+            </label>
+          </div>
+        </div>
+        <div class="form-group hidden" id="userIdField">
+          <label>User ID</label>
+          <input type="number" id="announceUserId" placeholder="Enter user ID" />
+        </div>
+        <div class="form-group"><label>Title</label><input type="text" id="announceTitle" placeholder="Announcement title" /></div>
+        <div class="form-group"><label>Message</label><textarea id="announceMsg" rows="4" placeholder="Your message to users..."></textarea></div>
+        <button class="btn btn-primary" onclick="sendAnnouncement()">📢 Send Announcement</button>
+        <div id="announceResult" style="margin-top:12px;font-size:0.88rem;color:var(--teal);"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/i18n.js"></script>
+<script>
+const user = getUser();
+if (!isLoggedIn() || !user || user.role !== 'admin') window.location.href = '/login.html';
+
+function showTab(name) {
+  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('tab-' + name)?.classList.remove('hidden');
+  document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+  event?.target?.closest('.sidebar-link')?.classList.add('active');
+  if (name === 'users') loadUsers();
+  if (name === 'fraud') loadFraud();
+  if (name === 'kyc') loadKyc();
+  if (name === 'disputes') loadDisputes();
+  if (name === 'moderation') loadModeration();
+  if (name === 'escrow') loadEscrow();
+  if (name === 'withdrawals') loadWithdrawals('pending');
+}
+
+async function loadStats() {
+  try {
+    const s = await apiFetch('/admin/stats');
+    document.getElementById('aStatUsers').textContent = s.total_users;
+    document.getElementById('aStatJobs').textContent = s.active_jobs;
+    document.getElementById('aStatVol').textContent = parseFloat(s.transaction_volume || 0).toLocaleString() + ' ETB';
+    document.getElementById('aStatDisp').textContent = s.dispute_resolution_rate;
+
+    // Pending withdrawals
+    if (document.getElementById('aStatWithdrawals')) {
+      document.getElementById('aStatWithdrawals').textContent = s.pending_withdrawals || 0;
+      if (s.pending_withdrawals > 0) {
+        document.getElementById('aStatWithdrawalVol').textContent = `${parseFloat(s.pending_withdrawal_volume || 0).toFixed(2)} ETB pending`;
+        // Show badge on sidebar
+        const badge = document.getElementById('withdrawalBadge');
+        if (badge) { badge.textContent = s.pending_withdrawals; badge.style.display = 'inline'; }
+      }
+    }
+
+    // Load fraud stats too
+    const f = await apiFetch('/admin/fraud/stats').catch(() => ({}));
+    if (document.getElementById('aStatFraud')) document.getElementById('aStatFraud').textContent = f.total || 0;
+    if (document.getElementById('aStatFraudHigh')) document.getElementById('aStatFraudHigh').textContent = f.high_severity || 0;
+    if (document.getElementById('aStatFraudResolved')) document.getElementById('aStatFraudResolved').textContent = f.resolved || 0;
+    if (document.getElementById('aStatFlaggedUsers')) document.getElementById('aStatFlaggedUsers').textContent = f.flagged_users || 0;
+  } catch {}
+}
+
+async function loadFraud() {
+  const container = document.getElementById('fraudList');
+  try {
+    const flags = await apiFetch('/admin/fraud');
+    if (!flags.length) {
+      container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);">✅ No active fraud flags. Platform looks clean!</div>';
+      return;
+    }
+    const severityColor = { low: '#64748b', medium: '#f59e0b', high: '#ef4444', critical: '#7c3aed' };
+    const severityBg = { low: '#f1f5f9', medium: '#fef9c3', high: '#fee2e2', critical: '#ede9fe' };
+    container.innerHTML = flags.map(f => `
+      <div style="border:1px solid var(--border);border-radius:8px;padding:16px;margin:8px;border-left:4px solid ${severityColor[f.severity] || '#64748b'};">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <strong>${f.full_name}</strong>
+              <span style="font-size:0.75rem;color:var(--muted);">${f.email}</span>
+              <span class="badge badge-${f.role === 'freelancer' ? 'verified' : 'silver'}">${f.role}</span>
+            </div>
+            <div style="font-size:0.82rem;color:var(--muted);">Fraud Score: <strong style="color:${f.fraud_score > 50 ? '#dc2626' : '#f59e0b'};">${f.fraud_score}/100</strong></div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span style="background:${severityBg[f.severity]};color:${severityColor[f.severity]};padding:3px 10px;border-radius:20px;font-size:0.78rem;font-weight:700;text-transform:uppercase;">${f.severity}</span>
+          </div>
+        </div>
+        <div style="background:var(--bg);border-radius:6px;padding:10px;margin-bottom:10px;">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">${f.flag_type.replace(/_/g,' ')}</div>
+          <p style="font-size:0.88rem;margin:0;">${f.description}</p>
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">${new Date(f.created_at).toLocaleString()}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-outline" onclick="resolveFlag(${f.id})">✅ Resolve Flag</button>
+          <button class="btn btn-sm btn-outline" onclick="suspendUser(${f.user_id})">⏸ Suspend</button>
+          <button class="btn btn-sm btn-danger" onclick="banUser(${f.user_id})">🚫 Ban</button>
+          <button class="btn btn-sm btn-outline" onclick="manualScanUser(${f.user_id})">🔍 Re-scan</button>
+        </div>
+      </div>`).join('');
+  } catch (err) {
+    container.innerHTML = '<div style="padding:20px;color:var(--muted);">Could not load fraud flags.</div>';
+  }
+}
+
+async function resolveFlag(id) {
+  try {
+    await apiFetch(`/admin/fraud/${id}/resolve`, { method: 'PUT' });
+    toast('Flag resolved', 'success');
+    loadFraud();
+    loadStats();
+  } catch { toast('Failed', 'error'); }
+}
+
+async function manualScan() {
+  const userId = document.getElementById('scanUserId').value;
+  if (!userId) { toast('Enter a user ID', 'error'); return; }
+  await manualScanUser(parseInt(userId));
+}
+
+async function manualScanUser(userId) {
+  try {
+    toast('Scanning...', '');
+    const res = await apiFetch(`/admin/fraud/scan/${userId}`, { method: 'POST' });
+    const resultEl = document.getElementById('fraudScanResult');
+    resultEl.classList.remove('hidden');
+    if (res.flags && res.flags.length > 0) {
+      resultEl.style.background = '#fee2e2';
+      resultEl.style.borderColor = '#fca5a5';
+      resultEl.innerHTML = `<strong style="color:#dc2626;">⚠️ ${res.flags.length} flag(s) detected for User #${userId}</strong><br/>${res.flags.map(f => `• ${f.type}: ${f.description}`).join('<br/>')}`;
+      loadFraud();
+    } else {
+      resultEl.style.background = '#f0fdf4';
+      resultEl.style.borderColor = '#86efac';
+      resultEl.innerHTML = `<strong style="color:#16a34a;">✅ User #${userId} looks clean — no suspicious patterns detected.</strong>`;
+    }
+  } catch (err) { toast(err.message || 'Scan failed', 'error'); }
+}
+
+async function loadUsers() {
+  const search = document.getElementById('userSearch')?.value || '';
+  try {
+    const users = await apiFetch(`/admin/users?search=${encodeURIComponent(search)}`);
+    document.getElementById('usersTable').innerHTML = users.map(u => `
+      <tr>
+        <td>${u.full_name}</td><td>${u.email}</td>
+        <td><span class="badge badge-${u.role === 'admin' ? 'gold' : u.role === 'freelancer' ? 'teal' : 'silver'}">${u.role}</span></td>
+        <td><span class="status status-${u.kyc_status === 'approved' ? 'completed' : u.kyc_status === 'pending' ? 'pending' : 'open'}">${u.kyc_status}</span></td>
+        <td>${u.is_banned ? '<span class="status status-cancelled">Banned</span>' : u.is_suspended ? '<span class="status status-disputed">Suspended</span>' : '<span class="status status-active">Active</span>'}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${!u.is_suspended && !u.is_banned ? `<button class="btn btn-sm btn-outline" onclick="suspendUser(${u.id})">Suspend</button>` : ''}
+          ${u.is_suspended ? `<button class="btn btn-sm btn-teal" onclick="unsuspendUser(${u.id})">Unsuspend</button>` : ''}
+          ${!u.is_banned ? `<button class="btn btn-sm btn-danger" onclick="banUser(${u.id})">Ban</button>` : ''}
+          ${u.is_banned ? `<button class="btn btn-sm btn-outline" onclick="unbanUser(${u.id})">Unban</button>` : ''}
+        </td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;">No users found.</td></tr>';
+  } catch {}
+}
+
+async function suspendUser(id) {
+  if (!confirm('Suspend this user? They will not be able to log in.')) return;
+  try {
+    await apiFetch(`/admin/users/${id}/suspend`, { method: 'PUT' });
+    toast('User suspended', 'success');
+    loadUsers();
+  } catch (err) { toast(err.message || 'Failed to suspend user', 'error'); }
+}
+
+async function unsuspendUser(id) {
+  try {
+    await apiFetch(`/admin/users/${id}/unsuspend`, { method: 'PUT' });
+    toast('User unsuspended — they can now log in again', 'success');
+    loadUsers();
+  } catch (err) {
+    const msg = err.message || err.error || JSON.stringify(err);
+    toast(`Failed to unsuspend: ${msg}`, 'error');
+    console.error('unsuspend error:', err);
+  }
+}
+
+async function banUser(id) {
+  if (!confirm('Permanently ban this user? This cannot be undone easily.')) return;
+  try {
+    await apiFetch(`/admin/users/${id}/ban`, { method: 'PUT' });
+    toast('User banned', 'success');
+    loadUsers();
+  } catch (err) { toast(err.message || 'Failed to ban user', 'error'); }
+}
+
+async function unbanUser(id) {
+  if (!confirm('Unban this user?')) return;
+  try {
+    await apiFetch(`/admin/users/${id}/unban`, { method: 'PUT' });
+    toast('User unbanned', 'success');
+    loadUsers();
+  } catch (err) { toast(err.message || 'Failed to unban user', 'error'); }
+}
+
+async function loadKyc() {
+  try {
+    const items = await apiFetch('/admin/kyc');
+    document.getElementById('kycTable').innerHTML = items.length ? items.map(k => `
+      <tr>
+        <td><strong>${k.full_name}</strong><br/><small style="color:var(--muted);">${k.role || ''}</small></td>
+        <td>${k.email}</td>
+        <td>
+          <a href="${window.location.origin}${k.id_document_url}" target="_blank" class="btn btn-sm btn-outline">View ID</a>
+          <a href="${window.location.origin}${k.selfie_url}" target="_blank" class="btn btn-sm btn-outline" style="margin-left:4px;">View Selfie</a>
+        </td>
+        <td>${new Date(k.submitted_at).toLocaleDateString()}</td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-teal" onclick="reviewKyc(${k.id},'approved')">✅ Approve</button>
+          <button class="btn btn-sm btn-danger" onclick="reviewKyc(${k.id},'rejected')">❌ Reject</button>
+        </td>
+      </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No pending KYC submissions.</td></tr>';
+  } catch {}
+}
+
+async function reviewKyc(id, decision) {
+  const reason = decision === 'rejected' ? prompt('Rejection reason:') : '';
+  await apiFetch(`/kyc/review/${id}`, { method: 'POST', body: JSON.stringify({ decision, rejection_reason: reason }) });
+  toast(`KYC ${decision}`, 'success'); loadKyc();
+}
+
+async function loadDisputes() {
+  const container = document.getElementById('disputesList');
+  try {
+    const items = await apiFetch('/admin/disputes');
+    if (!items.length) {
+      container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted);"><div style="font-size:2.5rem;margin-bottom:12px;">⚖️</div><p>No disputes raised yet.</p></div>';
+      return;
+    }
+    container.innerHTML = items.map(d => `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:18px;margin:8px;${d.status==='open'?'border-left:4px solid #f59e0b;':d.status==='resolved'?'border-left:4px solid #16a34a;':'border-left:4px solid #3b82f6;'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+          <div>
+            <div style="font-weight:700;">Dispute #${d.id} — Contract #${d.contract_id}</div>
+            <div style="color:var(--muted);font-size:0.82rem;margin-top:2px;">Raised by <strong>${d.raised_by_name}</strong> · ${new Date(d.created_at).toLocaleDateString()}</div>
+          </div>
+          <span class="status ${d.status==='open'?'status-pending':d.status==='resolved'?'status-completed':'status-active'}">${d.status.replace('_',' ')}</span>
+        </div>
+        <div style="background:var(--bg);border-radius:6px;padding:12px;margin-bottom:12px;font-size:0.88rem;">${d.reason}</div>
+        ${d.status === 'resolved' ? `
+          <div style="background:#f0fdf4;border-radius:6px;padding:10px;font-size:0.85rem;">
+            <strong style="color:#16a34a;">✅ Resolution:</strong> ${d.resolution}
+          </div>` : `
+          <div style="background:#f8fafc;border-radius:8px;padding:14px;">
+            <div style="font-size:0.82rem;font-weight:700;color:var(--muted);margin-bottom:8px;">RESOLVE DISPUTE</div>
+            <textarea id="res-${d.id}" rows="2" placeholder="Resolution decision..." style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.88rem;margin-bottom:8px;resize:none;"></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-sm btn-teal" onclick="resolveDispute(${d.id},'freelancer')">💸 Release to Freelancer</button>
+              <button class="btn btn-sm btn-outline" onclick="resolveDispute(${d.id},'client')">↩ Refund to Client</button>
+            </div>
+          </div>`}
+      </div>`).join('');
+  } catch { container.innerHTML = '<div style="padding:20px;color:var(--muted);">Could not load disputes.</div>'; }
+}
+
+async function resolveDispute(id, release_to) {
+  const resolution = document.getElementById(`res-${id}`)?.value?.trim();
+  if (!resolution) { toast('Please enter a resolution decision', 'error'); return; }
+  try {
+    await apiFetch(`/disputes/${id}/resolve`, { method: 'PUT', body: JSON.stringify({ resolution, release_to }) });
+    toast('Dispute resolved', 'success');
+    loadDisputes();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+async function loadModeration() {
+  const container = document.getElementById('moderationList');
+  try {
+    const data = await apiFetch('/admin/moderation');
+    const msgs = data.reported_messages || [];
+    if (!msgs.length) {
+      container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted);"><div style="font-size:2.5rem;margin-bottom:12px;">🛡️</div><p>No reported content. Platform looks clean!</p></div>';
+      return;
+    }
+    container.innerHTML = msgs.map(m => `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin:8px;border-left:4px solid #f59e0b;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+          <div>
+            <div style="font-weight:700;">Message #${m.id}</div>
+            <div style="color:var(--muted);font-size:0.82rem;">From: <strong>${m.reporter_name}</strong> · ${new Date(m.created_at).toLocaleDateString()}</div>
+          </div>
+          <span class="status status-pending">Reported</span>
+        </div>
+        <div style="background:#fef9c3;border-radius:6px;padding:10px;margin-bottom:10px;font-size:0.88rem;">"${m.content}"</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-danger" onclick="moderateMessage(${m.id},'remove')">🗑 Remove Message</button>
+          <button class="btn btn-sm btn-outline" onclick="moderateMessage(${m.id},'warn')">⚠️ Warn & Dismiss</button>
+          <button class="btn btn-sm btn-outline" onclick="moderateMessage(${m.id},'dismiss')">✓ Dismiss</button>
+        </div>
+      </div>`).join('');
+  } catch { container.innerHTML = '<div style="padding:20px;color:var(--muted);">Could not load moderation queue.</div>'; }
+}
+
+async function moderateMessage(id, action) {
+  try {
+    await apiFetch(`/admin/moderation/message/${id}`, { method: 'PUT', body: JSON.stringify({ action }) });
+    toast(action === 'remove' ? 'Message removed' : 'Dismissed', 'success');
+    loadModeration();
+  } catch { toast('Failed', 'error'); }
+}
+
+async function loadEscrow() {
+  try {
+    const items = await apiFetch('/admin/escrow');
+    document.getElementById('escrowTable').innerHTML = items.map(c => `
+      <tr>
+        <td>#${c.id}</td><td>${c.client_name}</td><td>${c.freelancer_name}</td>
+        <td>${parseFloat(c.escrow_balance).toFixed(2)} ETB</td>
+        <td><span class="status status-${c.escrow_status === 'funded' ? 'active' : c.escrow_status === 'frozen' ? 'disputed' : 'completed'}">${c.escrow_status}</span></td>
+      </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No contracts.</td></tr>';
+  } catch {}
+}
+
+async function sendAnnouncement() {
+  const title = document.getElementById('announceTitle').value;
+  const message = document.getElementById('announceMsg').value;
+  const target = document.querySelector('input[name="target"]:checked')?.value || 'all';
+  const user_id = target === 'user' ? document.getElementById('announceUserId').value : null;
+  if (!title || !message) { toast('Title and message required', 'error'); return; }
+  if (target === 'user' && !user_id) { toast('Please enter a User ID', 'error'); return; }
+  try {
+    const res = await apiFetch('/admin/announcements', { method: 'POST', body: JSON.stringify({ title, message, target, user_id }) });
+    document.getElementById('announceResult').textContent = `✅ Sent to ${res.sent_to} user${res.sent_to !== 1 ? 's' : ''}`;
+    toast('Announcement sent!', 'success');
+    document.getElementById('announceTitle').value = '';
+    document.getElementById('announceMsg').value = '';
+  } catch (err) { toast(err.message || 'Failed to send', 'error'); }
+}
+
+function selectTarget(radio) {
+  document.getElementById('userIdField').classList.toggle('hidden', radio.value !== 'user');
+  // Highlight selected
+  document.querySelectorAll('input[name="target"]').forEach(r => {
+    r.closest('label').style.borderColor = r.checked ? 'var(--blue)' : 'var(--border)';
+    r.closest('label').style.background = r.checked ? '#eff6ff' : '';
+  });
+}
+
+async function loadWithdrawals(mode = 'pending') {
+  const container = document.getElementById('withdrawalsList');
+  const title = document.getElementById('withdrawalTableTitle');
+  const summary = document.getElementById('withdrawalSummary');
+  if (title) title.textContent = mode === 'pending' ? 'Pending Requests' : 'All Withdrawals';
+  container.innerHTML = '<div class="loading-spinner">Loading...</div>';
+  try {
+    const endpoint = mode === 'all' ? '/admin/withdrawals/history' : '/admin/withdrawals';
+    const items = await apiFetch(endpoint);
+    if (summary && mode === 'pending') {
+      const total = items.reduce((s, i) => s + parseFloat(i.amount), 0);
+      summary.innerHTML = items.length
+        ? `<span style="font-size:.88rem;color:#1d4ed8;font-weight:600;">📋 ${items.length} pending request${items.length!==1?'s':''}</span>
+           <span style="font-size:.88rem;color:#0891b2;font-weight:700;">💰 ${total.toFixed(2)} ETB total</span>
+           <span style="font-size:.8rem;color:var(--muted);">Approve to process · Reject to refund to wallet</span>`
+        : `<span style="font-size:.88rem;color:#16a34a;font-weight:600;">✅ No pending withdrawal requests</span>`;
+    }
+    if (!items.length) {
+      container.innerHTML = `<div style="padding:32px;text-align:center;color:var(--muted);"><div style="font-size:2.5rem;margin-bottom:12px;">💸</div><p>${mode==='pending'?'No pending withdrawal requests.':'No withdrawal history yet.'}</p></div>`;
+      return;
+    }
+    const methodLabels = { telebirr:'📱 Telebirr', cbe_birr:'🏦 CBE Birr', bank_transfer:'🏛 Bank Transfer', visa:'💳 Visa', mastercard:'💳 Mastercard' };
+    const statusColor = { pending:'#f59e0b', completed:'#16a34a', failed:'#dc2626' };
+    container.innerHTML = items.map(w => `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:18px;margin:8px;${w.status==='pending'?'border-left:4px solid #f59e0b;':w.status==='completed'?'border-left:4px solid #16a34a;':'border-left:4px solid #dc2626;'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <strong>${w.full_name}</strong>
+              <span style="font-size:.75rem;color:var(--muted);">${w.email}</span>
+              <span class="badge badge-${w.role==='freelancer'?'verified':'silver'}">${w.role}</span>
+            </div>
+            <div style="font-size:.82rem;color:var(--muted);">Tx #${w.id} · ${new Date(w.created_at).toLocaleString()}</div>
+            ${w.gateway_ref?`<div style="font-size:.8rem;color:#64748b;margin-top:3px;">📝 ${w.gateway_ref}</div>`:''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:1.4rem;font-weight:800;color:#1e293b;">${parseFloat(w.amount).toFixed(2)} ETB</div>
+            <div style="font-size:.82rem;color:var(--muted);">${methodLabels[w.method]||w.method}</div>
+            <span style="background:${w.status==='pending'?'#fef9c3':w.status==='completed'?'#dcfce7':'#fee2e2'};color:${statusColor[w.status]};padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700;text-transform:uppercase;">${w.status}</span>
+          </div>
+        </div>
+        ${w.status==='pending'?`
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-teal" onclick="approveWithdrawal(${w.id},${w.amount})">✅ Approve & Process</button>
+          <button class="btn btn-sm btn-danger" onclick="rejectWithdrawal(${w.id},${w.amount})">❌ Reject & Refund</button>
+        </div>`:`<div style="font-size:.78rem;color:var(--muted);">Processed: ${new Date(w.created_at).toLocaleString()}</div>`}
+      </div>`).join('');
+  } catch { container.innerHTML = '<div style="padding:20px;color:var(--muted);">Could not load withdrawals.</div>'; }
+}
+
+async function approveWithdrawal(id, amount) {
+  if (!confirm(`Approve withdrawal of ${parseFloat(amount).toFixed(2)} ETB?\n\nThis confirms the funds have been sent to the user's account.`)) return;
+  try {
+    await apiFetch(`/admin/withdrawals/${id}/approve`, { method: 'PUT' });
+    toast('✅ Withdrawal approved', 'success');
+    loadWithdrawals('pending'); loadStats();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+async function rejectWithdrawal(id, amount) {
+  const reason = prompt(`Reject withdrawal of ${parseFloat(amount).toFixed(2)} ETB?\n\nReason (funds will be returned to user's wallet):`);
+  if (reason === null) return;
+  try {
+    await apiFetch(`/admin/withdrawals/${id}/reject`, { method: 'PUT', body: JSON.stringify({ reason: reason || 'Rejected by admin' }) });
+    toast(`❌ Rejected — ${parseFloat(amount).toFixed(2)} ETB refunded to wallet`, 'success');
+    loadWithdrawals('pending'); loadStats();
+  } catch (err) { toast(err.message || 'Failed', 'error'); }
+}
+
+loadStats();
+</script>
+</body>
+</html>

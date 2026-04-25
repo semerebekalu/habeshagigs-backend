@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#1a6b3c;--green-d:#0d4526;--green-m:#2d8f55;--green-l:#e8f5ee;
+  --gold:#c9a227;--gold-l:#fdf6e3;
+  --dark:#111;--gray:#6b7280;--light:#f4f6f3;--white:#fff;
+  --border:#e5e7eb;--red:#dc2626;--blue:#1d4ed8;
+  --shadow:0 2px 16px rgba(0,0,0,0.09);
+  --fh:'Playfair Display',serif;--fb:'DM Sans',sans-serif;
+}
+body{font-family:var(--fb);background:var(--white);color:var(--dark);font-size:15px;line-height:1.6;overflow-x:hidden}
+
+/* LANG TOGGLE */
+.lang-bar{background:var(--green-d);padding:6px 2rem;display:flex;justify-content:flex-end;align-items:center;gap:12px}
+.lang-btn{background:transparent;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.8);padding:3px 14px;border-radius:20px;font-size:12px;cursor:pointer;font-family:var(--fb);font-weight:600;transition:all .2s}
+.lang-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
+.lang-label{color:rgba(255,255,255,.5);font-size:12px}
+
+/* NAV */
+nav{background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;padding:0 2rem}
+.nav-inner{max-width:1200px;margin:0 auto;height:62px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:var(--fh);font-size:1.5rem;color:var(--green);font-weight:900;cursor:pointer}
+.logo span{color:var(--gold)}
+.nav-links{display:flex;gap:1.8rem;list-style:none}
+.nav-links a{text-decoration:none;color:var(--gray);font-weight:500;font-size:14px;cursor:pointer;transition:color .2s}
+.nav-links a:hover{color:var(--green)}
+.nav-right{display:flex;gap:10px;align-items:center}
+.btn{padding:8px 18px;border-radius:8px;border:none;font-family:var(--fb);font-weight:600;font-size:14px;cursor:pointer;transition:all .2s}
+.btn-outline{background:transparent;border:1.5px solid var(--green);color:var(--green)}
+.btn-outline:hover{background:var(--green-l)}
+.btn-solid{background:var(--green);color:#fff}
+.btn-solid:hover{background:var(--green-m)}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-gold:hover{opacity:.9}
+.btn-red{background:var(--red);color:#fff}
+.btn-sm{padding:5px 12px;font-size:12px}
+
+/* PAGES */
+.page{display:none}.page.active{display:block}
+
+/* HERO */
+.hero{background:linear-gradient(140deg,#072314 0%,#1a6b3c 55%,#2d8f55 100%);padding:80px 2rem 60px;text-align:center;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:4px;background:var(--gold)}
+.hero-inner{max-width:800px;margin:0 auto;position:relative;z-index:1}
+.hero h1{font-family:var(--fh);font-size:clamp(1.9rem,5vw,3.4rem);color:#fff;line-height:1.15;margin-bottom:.8rem}
+.hero h1 em{color:var(--gold);font-style:normal}
+.hero p{color:rgba(255,255,255,.8);font-size:1.05rem;margin-bottom:2rem}
+.hero-search{display:flex;max-width:520px;margin:0 auto 1.8rem;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.hero-search input{flex:1;padding:13px 16px;border:none;outline:none;font-family:var(--fb);font-size:15px}
+.hero-search button{padding:13px 22px;background:var(--gold);border:none;color:#fff;font-weight:700;cursor:pointer;font-family:var(--fb)}
+.hero-tags{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:2rem}
+.hero-tag{background:rgba(255,255,255,.14);color:rgba(255,255,255,.9);padding:5px 14px;border-radius:20px;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,.2);transition:all .2s}
+.hero-tag:hover{background:rgba(255,255,255,.25)}
+.hero-stats{display:flex;gap:2.5rem;justify-content:center;padding-top:1.8rem;border-top:1px solid rgba(255,255,255,.15)}
+.stat-num{font-family:var(--fh);font-size:1.7rem;font-weight:900;color:var(--gold)}
+.stat-label{font-size:12px;color:rgba(255,255,255,.65)}
+
+/* SECTION */
+.section{padding:56px 2rem}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-title{font-family:var(--fh);font-size:1.75rem;margin-bottom:6px}
+.section-sub{color:var(--gray);margin-bottom:2rem}
+
+/* CAT GRID */
+.cats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px}
+.cat-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 14px;text-align:center;cursor:pointer;transition:all .22s}
+.cat-card:hover{border-color:var(--green);background:var(--green-l);transform:translateY(-2px)}
+.cat-icon{font-size:1.9rem;margin-bottom:7px}
+.cat-name{font-weight:600;font-size:13px}
+.cat-count{font-size:11px;color:var(--gray);margin-top:2px}
+
+/* GIG CARDS */
+.gigs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:22px}
+.gig-card{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .22s}
+.gig-card:hover{box-shadow:var(--shadow);transform:translateY(-3px);border-color:transparent}
+.gig-img{height:155px;background:var(--green-l);display:flex;align-items:center;justify-content:center;font-size:3.2rem;position:relative}
+.gig-badge{position:absolute;top:9px;left:9px;background:var(--gold);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px}
+.gig-body{padding:13px}
+.gig-seller{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.av{width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.gig-title{font-weight:600;font-size:13px;line-height:1.4;margin-bottom:7px}
+.gig-rating{display:flex;align-items:center;gap:4px;margin-bottom:7px}
+.stars{color:var(--gold);font-size:13px}
+.gig-footer{display:flex;justify-content:space-between;align-items:center;padding-top:9px;border-top:1px solid var(--border)}
+.gig-price{font-family:var(--fh);font-weight:700;font-size:1.05rem;color:var(--green)}
+.gig-price span{font-size:11px;color:var(--gray);font-family:var(--fb);font-weight:400}
+.fav-btn{background:none;border:1px solid var(--border);padding:4px 9px;border-radius:7px;cursor:pointer;font-size:13px;transition:all .2s}
+.fav-btn:hover{background:var(--green-l)}
+.fav-btn.faved{background:#fee2e2;border-color:#fca5a5;color:var(--red)}
+
+/* FILTER BAR */
+.filter-bar{background:#fff;border-bottom:1px solid var(--border);padding:12px 2rem;position:sticky;top:62px;z-index:90}
+.filter-inner{max-width:1200px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chip{padding:6px 15px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;font-family:var(--fb)}
+.chip:hover,.chip.active{background:var(--green);color:#fff;border-color:var(--green)}
+.sort-sel{margin-left:auto;padding:6px 13px;border-radius:20px;border:1.5px solid var(--border);font-family:var(--fb);font-size:13px;background:#fff}
+
+/* GIG DETAIL */
+.gig-detail{max-width:1080px;margin:0 auto;padding:36px 2rem}
+.gig-d-grid{display:grid;grid-template-columns:1fr 320px;gap:2.5rem}
+.gig-d-img{height:280px;background:var(--green-l);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:5.5rem;margin-bottom:1.4rem}
+.gig-d-title{font-family:var(--fh);font-size:1.6rem;margin-bottom:.9rem}
+.d-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
+.tag{background:var(--green-l);color:var(--green);font-size:12px;padding:4px 12px;border-radius:20px;font-weight:500}
+.gig-d-desc{color:var(--gray);line-height:1.8;margin-bottom:1.4rem}
+.includes-box{background:var(--light);border-radius:12px;padding:1.4rem;margin-bottom:1.4rem}
+.inc-item{display:flex;gap:9px;margin-bottom:7px;font-size:14px;align-items:flex-start}
+.inc-check{color:var(--green);font-weight:700;flex-shrink:0}
+.order-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:22px;position:sticky;top:80px}
+.order-price{font-family:var(--fh);font-size:1.9rem;font-weight:900;color:var(--green);margin-bottom:3px}
+.order-del{font-size:13px;color:var(--gray);margin-bottom:1.4rem}
+.order-btn{width:100%;padding:13px;margin-bottom:10px;font-size:14px;border-radius:10px}
+.divider{height:1px;background:var(--border);margin:1.3rem 0}
+
+/* REVIEW FORM */
+.review-section{background:var(--light);border-radius:14px;padding:1.5rem;margin-top:1.5rem}
+.review-section h3{font-family:var(--fh);font-size:1.2rem;margin-bottom:1rem}
+.star-picker{display:flex;gap:6px;margin-bottom:1rem}
+.star-pick{font-size:1.6rem;cursor:pointer;opacity:.4;transition:all .2s;line-height:1}
+.star-pick.lit{opacity:1}
+.review-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.rc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.rc-name{font-weight:600;font-size:13px}
+.rc-stars{color:var(--gold);font-size:13px}
+.rc-text{font-size:13px;color:var(--gray)}
+.rc-date{font-size:11px;color:#9ca3af}
+
+/* AUTH */
+.auth-wrap{min-height:80vh;display:flex;align-items:center;justify-content:center;padding:40px 2rem;background:var(--light)}
+.auth-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:38px;width:100%;max-width:430px}
+.auth-logo{font-family:var(--fh);font-size:1.75rem;color:var(--green);font-weight:900;margin-bottom:6px;text-align:center}
+.auth-logo span{color:var(--gold)}
+.auth-sub{text-align:center;color:var(--gray);margin-bottom:1.8rem;font-size:13px}
+.fg{margin-bottom:16px}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+input,textarea,select{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none;transition:border .2s;background:#fff}
+input:focus,textarea:focus,select:focus{border-color:var(--green)}
+textarea{resize:vertical;min-height:85px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.role-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.4rem}
+.role-opt{border:1.5px solid var(--border);border-radius:10px;padding:13px;text-align:center;cursor:pointer;transition:all .2s}
+.role-opt.sel{border-color:var(--green);background:var(--green-l)}
+.auth-foot{text-align:center;margin-top:1.3rem;font-size:13px;color:var(--gray)}
+.auth-foot a{color:var(--green);text-decoration:none;font-weight:600;cursor:pointer}
+
+/* DASHBOARD */
+.dash-layout{display:grid;grid-template-columns:220px 1fr;min-height:80vh}
+.sidebar{background:#0d1f14;padding:24px 0}
+.sb-logo{font-family:var(--fh);font-size:1.15rem;color:#fff;padding:0 18px 22px;font-weight:900}
+.sb-logo span{color:var(--gold)}
+.sb-nav{list-style:none}
+.sb-nav li a{display:flex;align-items:center;gap:9px;padding:11px 18px;color:rgba(255,255,255,.6);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;border-left:3px solid transparent}
+.sb-nav li a:hover,.sb-nav li a.act{background:rgba(255,255,255,.07);color:#fff;border-left-color:var(--gold)}
+.sb-sep{height:1px;background:rgba(255,255,255,.08);margin:10px 18px}
+.dash-main{background:var(--light);padding:28px}
+.dash-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.8rem}
+.dash-hdr h2{font-family:var(--fh);font-size:1.4rem}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.8rem}
+.met{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px}
+.met-lbl{font-size:11px;color:var(--gray);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.met-val{font-family:var(--fh);font-size:1.5rem;font-weight:900}
+.met-chg{font-size:11px;margin-top:3px}
+.up{color:#059669}.dn{color:var(--red)}
+.tbl-card{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.5rem}
+.tbl-head{padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+table{width:100%;border-collapse:collapse}
+th,td{padding:11px 18px;text-align:left;font-size:13px;border-bottom:1px solid var(--border)}
+th{background:var(--light);font-weight:600;color:var(--gray);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+tr:last-child td{border:none}
+.status{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.status.active{background:#dcfce7;color:#166534}
+.status.pending{background:#fef9c3;color:#854d0e}
+.status.completed{background:#dbeafe;color:#1e40af}
+.status.suspended{background:#fee2e2;color:#991b1b}
+.status.new{background:#ede9fe;color:#5b21b6}
+
+/* ADMIN PANEL */
+.admin-layout{display:grid;grid-template-columns:240px 1fr;min-height:80vh}
+.admin-sidebar{background:#1a1a2e;padding:0}
+.admin-sb-top{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.admin-logo{font-family:var(--fh);font-size:1.1rem;color:#fff;font-weight:900}
+.admin-logo span{color:#e63946}
+.admin-badge{background:#e63946;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:6px;font-weight:700}
+.admin-sb-nav{list-style:none;padding:10px 0}
+.admin-sb-nav li a{display:flex;align-items:center;gap:9px;padding:11px 20px;color:rgba(255,255,255,.55);font-size:13px;cursor:pointer;transition:all .2s;border-left:3px solid transparent;font-weight:500}
+.admin-sb-nav li a:hover,.admin-sb-nav li a.act{color:#fff;background:rgba(255,255,255,.06);border-left-color:#e63946}
+.admin-sep{height:1px;background:rgba(255,255,255,.07);margin:6px 20px}
+.admin-main{background:#f0f2f5;padding:28px}
+.admin-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.8rem}
+.admin-hdr h2{font-family:var(--fh);font-size:1.4rem}
+.admin-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.8rem}
+.amet{background:#fff;border-radius:12px;padding:18px;border:1px solid #e2e8f0}
+.amet-icon{font-size:1.5rem;margin-bottom:8px}
+.amet-val{font-family:var(--fh);font-size:1.6rem;font-weight:900;margin-bottom:2px}
+.amet-lbl{font-size:11px;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.amet-chg{font-size:11px;margin-top:4px}
+.admin-section{background:#fff;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:1.5rem;overflow:hidden}
+.admin-section-head{padding:14px 20px;border-bottom:1px solid #e2e8f0;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;background:#fff}
+.action-btns{display:flex;gap:6px}
+.toggle-switch{position:relative;width:42px;height:22px}
+.toggle-switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;transition:.3s;border-radius:22px}
+.slider:before{position:absolute;content:'';height:16px;width:16px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}
+input:checked + .slider{background:var(--green)}
+input:checked + .slider:before{transform:translateX(20px)}
+.search-bar{padding:12px 18px;border-bottom:1px solid #e2e8f0;display:flex;gap:10px}
+.search-bar input{max-width:280px;padding:8px 12px;font-size:13px;border-radius:8px}
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:80px;padding:0 18px 14px;border-bottom:1px solid #e2e8f0}
+.bar{background:var(--green);border-radius:4px 4px 0 0;flex:1;transition:all .3s;position:relative;cursor:pointer}
+.bar:hover{background:var(--green-m)}
+.bar-lbl{text-align:center;font-size:10px;color:var(--gray);margin-top:4px}
+.revenue-chart{padding:14px 18px 0}
+.rev-bars{display:flex;align-items:flex-end;gap:8px;height:100px}
+.rev-bar{background:linear-gradient(to top,var(--green-d),var(--green-m));border-radius:4px 4px 0 0;flex:1;min-width:0;cursor:pointer;transition:opacity .2s}
+.rev-bar:hover{opacity:.8}
+.rev-labels{display:flex;gap:8px;padding:6px 0 14px;border-bottom:1px solid #e2e8f0}
+.rev-lbl{flex:1;text-align:center;font-size:10px;color:var(--gray);min-width:0}
+
+/* MESSAGES */
+.msg-layout{display:grid;grid-template-columns:290px 1fr;height:580px;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.msg-list{border-right:1px solid var(--border);overflow-y:auto}
+.msg-list-head{padding:14px;font-weight:700;font-size:13px;border-bottom:1px solid var(--border)}
+.msg-prev{display:flex;gap:9px;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .2s}
+.msg-prev:hover,.msg-prev.act{background:var(--green-l)}
+.msg-info{flex:1;min-width:0}
+.msg-name{font-weight:600;font-size:13px;display:flex;justify-content:space-between}
+.msg-snip{font-size:12px;color:var(--gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.chat-area{display:flex;flex-direction:column;background:#f9fafb}
+.chat-hdr{background:#fff;padding:13px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px;display:flex;align-items:center;gap:9px}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.bubble{max-width:62%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.5}
+.bubble.sent{background:var(--green);color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.bubble.recv{background:#fff;border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:3px}
+.chat-inp{background:#fff;padding:12px;border-top:1px solid var(--border);display:flex;gap:9px}
+.chat-inp input{flex:1;border-radius:20px;padding:9px 15px;font-size:13px}
+.chat-inp button{background:var(--green);color:#fff;border:none;padding:9px 16px;border-radius:20px;font-weight:600;cursor:pointer;font-family:var(--fb);font-size:13px}
+
+/* POST GIG */
+.post-pg{max-width:700px;margin:0 auto;padding:36px 2rem}
+.step-bar{display:flex;margin-bottom:2rem;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+.step{flex:1;padding:9px;text-align:center;font-size:12px;font-weight:600;background:#fff;color:var(--gray);border-right:1px solid var(--border);transition:all .2s}
+.step:last-child{border:none}
+.step.active{background:var(--green);color:#fff}
+.step.done{background:var(--green-l);color:var(--green)}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--dark);color:#fff;padding:13px 18px;border-radius:10px;font-size:13px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;max-width:310px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:#059669}
+.toast.err{background:var(--red)}
+
+/* PAYMENT MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal-card{background:#fff;border-radius:16px;padding:28px;max-width:400px;width:100%}
+.modal-card h3{font-family:var(--fh);font-size:1.3rem;margin-bottom:1.3rem}
+.pay-methods{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:1.3rem}
+.pm{border:1.5px solid var(--border);border-radius:10px;padding:11px;text-align:center;cursor:pointer;transition:all .2s;font-size:12px;font-weight:600}
+.pm:hover,.pm.sel{border-color:var(--green);background:var(--green-l);color:var(--green)}
+.pm-icon{font-size:1.4rem;margin-bottom:3px}
+
+/* HOW IT WORKS */
+.hiw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.8rem;max-width:860px;margin:0 auto}
+.hiw-card{text-align:center}
+.hiw-icon{width:58px;height:58px;background:var(--green-l);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.4rem}
+
+/* FOOTER */
+footer{background:#0d1f14;color:rgba(255,255,255,.65);padding:44px 2rem 22px}
+.footer-inner{max-width:1200px;margin:0 auto}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:2rem;margin-bottom:2rem}
+.footer-brand p{margin-top:10px;font-size:13px;line-height:1.7;max-width:270px}
+.footer-col h4{color:#fff;font-weight:700;margin-bottom:.9rem;font-size:13px}
+.footer-col ul{list-style:none}
+.footer-col li{margin-bottom:7px;font-size:12px;cursor:pointer}
+.footer-col li:hover{color:#fff}
+.footer-btm{border-top:1px solid rgba(255,255,255,.09);padding-top:20px;display:flex;justify-content:space-between;font-size:11px}
+.flag{color:var(--gold);display:flex;align-items:center;gap:6px}
+
+/* BACK BTN */
+.back-btn{display:inline-flex;align-items:center;gap:5px;color:var(--green);font-weight:600;font-size:13px;cursor:pointer;margin-bottom:1.3rem;border:none;background:none;font-family:var(--fb)}
+.back-btn:hover{text-decoration:underline}
+
+/* PROFILE */
+.profile-pg{max-width:880px;margin:0 auto;padding:36px 2rem}
+.profile-hdr{background:var(--green);border-radius:16px;padding:1.8rem;color:#fff;display:flex;gap:1.4rem;align-items:center;margin-bottom:1.8rem}
+.profile-av{width:76px;height:76px;border-radius:50%;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:1.8rem;font-weight:900;flex-shrink:0}
+.profile-name{font-family:var(--fh);font-size:1.7rem}
+.badge-pill{background:rgba(255,255,255,.2);padding:3px 11px;border-radius:20px;font-size:11px;font-weight:600}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .gigs-grid{grid-template-columns:1fr 1fr}
+  .metrics,.admin-metrics{grid-template-columns:1fr 1fr}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .gig-d-grid{grid-template-columns:1fr}
+  .dash-layout,.admin-layout{grid-template-columns:1fr}
+  .sidebar,.admin-sidebar{display:none}
+  .msg-layout{grid-template-columns:1fr}
+}
+@media(max-width:480px){.gigs-grid{grid-template-columns:1fr}}
+
+/* AMHARIC support */
+.am{display:none}
+.en{display:inline}
+body.amharic .am{display:inline}
+body.amharic .en{display:none}
+body.amharic .am-block{display:block}
+body.amharic .en-block{display:none}
+.am-block{display:none}
+.en-block{display:block}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-bg" id="payModal" style="display:none">
+  <div class="modal-card">
+    <h3><span class="en">Complete Your Order</span><span class="am">ትዕዛዝዎን ያጠናቅቁ</span></h3>
+    <div id="payInfo" style="background:var(--light);border-radius:10px;padding:13px;margin-bottom:1.3rem;font-size:13px"></div>
+    <p style="font-size:12px;font-weight:600;margin-bottom:9px"><span class="en">Select payment method</span><span class="am">የክፍያ ዘዴ ይምረጡ</span></p>
+    <div class="pay-methods">
+      <div class="pm sel" onclick="selPay(this,'Telebirr')"><div class="pm-icon">📱</div>Telebirr</div>
+      <div class="pm" onclick="selPay(this,'CBE Birr')"><div class="pm-icon">🏦</div>CBE Birr</div>
+      <div class="pm" onclick="selPay(this,'Chapa')"><div class="pm-icon">💳</div>Chapa</div>
+      <div class="pm" onclick="selPay(this,'Bank')"><div class="pm-icon">🏧</div><span class="en">Bank</span><span class="am">ባንክ</span></div>
+    </div>
+    <div class="fg"><label><span class="en">Phone / Account</span><span class="am">ስልክ / አካውንት</span></label><input id="payPhone" placeholder="0912 345 678"></div>
+    <div style="display:flex;gap:9px">
+      <button class="btn btn-outline" style="flex:1" onclick="closeModal('payModal')"><span class="en">Cancel</span><span class="am">ይቅር</span></button>
+      <button class="btn btn-solid" style="flex:1" onclick="confirmPay()"><span class="en">Pay Now</span><span class="am">አሁን ይክፈሉ</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- REVIEW MODAL -->
+<div class="modal-bg" id="reviewModal" style="display:none">
+  <div class="modal-card" style="max-width:460px">
+    <h3><span class="en">Write a Review</span><span class="am">ግምገማ ይጻፉ</span></h3>
+    <p style="font-size:13px;color:var(--gray);margin-bottom:1rem" id="reviewGigTitle"></p>
+    <div class="fg">
+      <label><span class="en">Your Rating</span><span class="am">የእርስዎ ደረጃ</span></label>
+      <div class="star-picker" id="modalStars">
+        <span class="star-pick" data-v="1" onclick="setRating(1)">★</span>
+        <span class="star-pick" data-v="2" onclick="setRating(2)">★</span>
+        <span class="star-pick" data-v="3" onclick="setRating(3)">★</span>
+        <span class="star-pick" data-v="4" onclick="setRating(4)">★</span>
+        <span class="star-pick" data-v="5" onclick="setRating(5)">★</span>
+      </div>
+    </div>
+    <div class="fg"><label><span class="en">Your Review</span><span class="am">ግምገማዎ</span></label><textarea id="reviewText" rows="4" placeholder="Share your experience..."></textarea></div>
+    <div class="fg"><label><span class="en">Your Name</span><span class="am">ስምዎ</span></label><input id="reviewName" placeholder="e.g. Bekele A."></div>
+    <div style="display:flex;gap:9px">
+      <button class="btn btn-outline" style="flex:1" onclick="closeModal('reviewModal')"><span class="en">Cancel</span><span class="am">ይቅር</span></button>
+      <button class="btn btn-solid" style="flex:1" onclick="submitReview()"><span class="en">Submit Review</span><span class="am">ያስገቡ</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- LANG BAR -->
+<div class="lang-bar">
+  <span class="lang-label">🌐</span>
+  <button class="lang-btn active" id="btnEN" onclick="setLang('en')">English</button>
+  <button class="lang-btn" id="btnAM" onclick="setLang('am')">አማርኛ</button>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo" onclick="showPage('home')">Habesha<span>Gigs</span></div>
+    <ul class="nav-links">
+      <li><a onclick="showPage('browse')"><span class="en">Browse Gigs</span><span class="am">ጊጎች ይፈልጉ</span></a></li>
+      <li><a onclick="showPage('postGig')"><span class="en">Sell Services</span><span class="am">አገልግሎቶች ይሸጡ</span></a></li>
+      <li><a onclick="showPage('howItWorks')"><span class="en">How It Works</span><span class="am">እንዴት ይሰራል</span></a></li>
+    </ul>
+    <div class="nav-right" id="navRight">
+      <button class="btn btn-outline" onclick="showPage('login')"><span class="en">Sign In</span><span class="am">ግባ</span></button>
+      <button class="btn btn-solid" onclick="showPage('register')"><span class="en">Join Free</span><span class="am">በነፃ ይቀላቀሉ</span></button>
+    </div>
+  </div>
+</nav>
+
+<!-- ====== HOME ====== -->
+<div class="page active" id="homePage">
+  <div class="hero">
+    <div class="hero-inner">
+      <h1>
+        <span class="en">Ethiopia's Top Platform for<br><em>Freelance Services</em></span>
+        <span class="am">የኢትዮጵያ ምርጥ ፍሪላንስ<br><em>አገልግሎቶች መድረክ</em></span>
+      </h1>
+      <p><span class="en">Connect with skilled Ethiopian professionals. Pay in Birr, get results fast.</span><span class="am">የተደሰቱ ኢትዮጵያዊ ባለሙያዎችን ያግኙ። በብር ይክፈሉ፣ ፈጣን ውጤት ያግኙ።</span></p>
+      <div class="hero-search">
+        <input type="text" id="heroSearch" placeholder="Search services... / አገልግሎቶች ይፈልጉ...">
+        <button onclick="doSearch()"><span class="en">Search</span><span class="am">ፈልግ</span></button>
+      </div>
+      <div class="hero-tags">
+        <span class="hero-tag" onclick="filterCat('Graphic Design')">🎨 <span class="en">Design</span><span class="am">ዲዛይን</span></span>
+        <span class="hero-tag" onclick="filterCat('Translation')">🌍 <span class="en">Translation</span><span class="am">ትርጉም</span></span>
+        <span class="hero-tag" onclick="filterCat('Web Dev')">💻 <span class="en">Web Dev</span><span class="am">ድረ ገጽ</span></span>
+        <span class="hero-tag" onclick="filterCat('Video & Animation')">🎬 <span class="en">Video</span><span class="am">ቪዲዮ</span></span>
+        <span class="hero-tag" onclick="filterCat('Writing')">✍️ <span class="en">Writing</span><span class="am">ጽሑፍ</span></span>
+      </div>
+      <div class="hero-stats">
+        <div><div class="stat-num">12,400+</div><div class="stat-label"><span class="en">Freelancers</span><span class="am">ፍሪላንሰሮች</span></div></div>
+        <div><div class="stat-num">38,000+</div><div class="stat-label"><span class="en">Gigs Completed</span><span class="am">የተጠናቀቁ ስራዎች</span></div></div>
+        <div><div class="stat-num">4.9★</div><div class="stat-label"><span class="en">Avg. Rating</span><span class="am">አማካኝ ደረጃ</span></div></div>
+        <div><div class="stat-num">95%</div><div class="stat-label"><span class="en">On-Time</span><span class="am">ወቅቱን ጠብቆ</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-inner">
+      <h2 class="section-title"><span class="en">Explore popular services</span><span class="am">ታዋቂ አገልግሎቶችን ይፈልጉ</span></h2>
+      <p class="section-sub"><span class="en">Find skilled professionals across every digital service</span><span class="am">በሁሉም ዲጂታል አገልግሎቶች ውስጥ ችሎታ ያላቸው ባለሙያዎችን ያግኙ</span></p>
+      <div class="cats-grid">
+        <div class="cat-card" onclick="filterCat('Graphic Design')"><div class="cat-icon">🎨</div><div class="cat-name"><span class="en">Graphic Design</span><span class="am">ግራፊክ ዲዛይን</span></div><div class="cat-count">1,240</div></div>
+        <div class="cat-card" onclick="filterCat('Web Dev')"><div class="cat-icon">💻</div><div class="cat-name"><span class="en">Web Dev</span><span class="am">ድረ ገጽ ልማት</span></div><div class="cat-count">980</div></div>
+        <div class="cat-card" onclick="filterCat('Translation')"><div class="cat-icon">🌍</div><div class="cat-name"><span class="en">Translation</span><span class="am">ትርጉም</span></div><div class="cat-count">860</div></div>
+        <div class="cat-card" onclick="filterCat('Writing')"><div class="cat-icon">✍️</div><div class="cat-name"><span class="en">Writing</span><span class="am">ጽሑፍ</span></div><div class="cat-count">750</div></div>
+        <div class="cat-card" onclick="filterCat('Video & Animation')"><div class="cat-icon">🎬</div><div class="cat-name"><span class="en">Video</span><span class="am">ቪዲዮ</span></div><div class="cat-count">620</div></div>
+        <div class="cat-card" onclick="filterCat('Photography')"><div class="cat-icon">📸</div><div class="cat-name"><span class="en">Photography</span><span class="am">ፎቶ</span></div><div class="cat-count">520</div></div>
+        <div class="cat-card" onclick="filterCat('Social Media')"><div class="cat-icon">📱</div><div class="cat-name"><span class="en">Social Media</span><span class="am">ሶሻል ሚዲያ</span></div><div class="cat-count">480</div></div>
+        <div class="cat-card" onclick="filterCat('Data Entry')"><div class="cat-icon">📊</div><div class="cat-name"><span class="en">Data & Research</span><span class="am">ዳታ እና ጥናት</span></div><div class="cat-count">410</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="background:var(--light);padding-top:40px">
+    <div class="section-inner">
+      <h2 class="section-title"><span class="en">Featured Gigs</span><span class="am">ተመርጠው የቀረቡ ስራዎች</span></h2>
+      <p class="section-sub"><span class="en">Top-rated services from verified Ethiopian professionals</span><span class="am">ከተረጋገጡ ኢትዮጵያዊ ባለሙያዎች ምርጥ ደረጃ ያላቸው አገልግሎቶች</span></p>
+      <div class="gigs-grid" id="homeGrid"></div>
+    </div>
+  </div>
+
+  <div class="section" style="padding:56px 2rem">
+    <div class="section-inner" style="text-align:center">
+      <h2 class="section-title" style="margin-bottom:6px"><span class="en">How HabeshaGigs Works</span><span class="am">HabeshaGigs እንዴት ይሰራል</span></h2>
+      <p class="section-sub"><span class="en">Simple. Fast. Trusted.</span><span class="am">ቀላል። ፈጣን። ታማኝ።</span></p>
+    </div>
+    <div class="hiw-grid">
+      <div class="hiw-card"><div class="hiw-icon">🔍</div><h3 style="font-weight:700;margin-bottom:6px"><span class="en">Find a Service</span><span class="am">አገልግሎት ያግኙ</span></h3><p style="font-size:13px;color:var(--gray)"><span class="en">Browse thousands of gigs from skilled Ethiopian freelancers.</span><span class="am">ከኢትዮጵያ ባለሙያዎች ሺዎችን ጊጎች ያስሱ።</span></p></div>
+      <div class="hiw-card"><div class="hiw-icon">💬</div><h3 style="font-weight:700;margin-bottom:6px"><span class="en">Order & Communicate</span><span class="am">ይዘዙ እና ይወያዩ</span></h3><p style="font-size:13px;color:var(--gray)"><span class="en">Pay securely with Telebirr, CBE Birr, or Chapa.</span><span class="am">Telebirr፣ CBE Birr ወይም Chapa በኩል ያስተማምኑ።</span></p></div>
+      <div class="hiw-card"><div class="hiw-icon">⭐</div><h3 style="font-weight:700;margin-bottom:6px"><span class="en">Get Results & Review</span><span class="am">ውጤት ያግኙ እና ይገምግሙ</span></h3><p style="font-size:13px;color:var(--gray)"><span class="en">Receive your completed work, approve it, and leave a review.</span><span class="am">ስራዎን ይቀበሉ፣ ያጸድቁ እና ግምገማ ይስጡ።</span></p></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div style="font-family:var(--fh);font-size:1.3rem;color:#fff;font-weight:900">Habesha<span style="color:var(--gold)">Gigs</span></div>
+          <p><span class="en">Ethiopia's premier platform for digital freelance services.</span><span class="am">ለዲጂታል ፍሪላንስ አገልግሎቶች የኢትዮጵያ ዋና መድረክ።</span></p>
+        </div>
+        <div class="footer-col"><h4><span class="en">For Buyers</span><span class="am">ለገዥዎች</span></h4><ul><li><span class="en">How to Buy</span><span class="am">እንዴት መግዛት</span></li><li><span class="en">Payment Options</span><span class="am">የክፍያ አማራጮች</span></li><li><span class="en">Dispute Resolution</span><span class="am">ክርክር መፍቻ</span></li></ul></div>
+        <div class="footer-col"><h4><span class="en">For Sellers</span><span class="am">ለሻጭዎች</span></h4><ul><li><span class="en">How to Sell</span><span class="am">እንዴት መሸጥ</span></li><li><span class="en">Seller Levels</span><span class="am">የሻጭ ደረጃዎች</span></li><li><span class="en">Withdraw Earnings</span><span class="am">ገቢ ያውጡ</span></li></ul></div>
+        <div class="footer-col"><h4><span class="en">Company</span><span class="am">ኩባንያ</span></h4><ul><li><span class="en">About Us</span><span class="am">ስለ እኛ</span></li><li><span class="en">Careers</span><span class="am">ስራዎች</span></li><li><span class="en">Blog</span><span class="am">ብሎግ</span></li></ul></div>
+      </div>
+      <div class="footer-btm">
+        <span>© 2025 HabeshaGigs</span>
+        <div class="flag">🇪🇹 <span class="en">Made with pride in Ethiopia</span><span class="am">በኢትዮጵያ ተሰርቷል</span></div>
+        <span><span class="en">Terms · Privacy</span><span class="am">ውሎች · ግላዊነት</span></span>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ====== BROWSE ====== -->
+<div class="page" id="browsePage">
+  <div style="background:var(--green);padding:28px 2rem">
+    <div style="max-width:1200px;margin:0 auto">
+      <h1 style="font-family:var(--fh);color:#fff;font-size:1.7rem;margin-bottom:5px" id="browseTitle">All Gigs</h1>
+      <p style="color:rgba(255,255,255,.7);font-size:13px" id="browseSubtitle">Find the perfect service</p>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div class="filter-inner">
+      <button class="chip active" onclick="setFilt(this,'all')"><span class="en">All</span><span class="am">ሁሉ</span></button>
+      <button class="chip" onclick="setFilt(this,'Graphic Design')"><span class="en">Design</span><span class="am">ዲዛይን</span></button>
+      <button class="chip" onclick="setFilt(this,'Web Dev')">Tech</button>
+      <button class="chip" onclick="setFilt(this,'Writing')"><span class="en">Writing</span><span class="am">ጽሑፍ</span></button>
+      <button class="chip" onclick="setFilt(this,'Translation')"><span class="en">Translation</span><span class="am">ትርጉም</span></button>
+      <button class="chip" onclick="setFilt(this,'Video & Animation')">Video</button>
+      <select class="sort-sel" id="sortSel" onchange="renderBrowse()">
+        <option value="top"><span class="en">Best Selling</span></option>
+        <option value="pa"><span class="en">Price: Low–High</span></option>
+        <option value="pd"><span class="en">Price: High–Low</span></option>
+        <option value="new">Newest</option>
+      </select>
+    </div>
+  </div>
+  <div class="section"><div class="section-inner"><div class="gigs-grid" id="browseGrid"></div></div></div>
+</div>
+
+<!-- ====== GIG DETAIL ====== -->
+<div class="page" id="gigDetailPage">
+  <div class="gig-detail">
+    <button class="back-btn" onclick="goBack()">← <span class="en">Back</span><span class="am">ተመለስ</span></button>
+    <div class="gig-d-grid">
+      <div>
+        <div class="gig-d-img" id="dImg">🎨</div>
+        <h1 class="gig-d-title" id="dTitle"></h1>
+        <div class="d-tags" id="dTags"></div>
+        <p class="gig-d-desc" id="dDesc"></p>
+        <div class="includes-box"><h4 style="font-weight:700;margin-bottom:12px"><span class="en">What's Included</span><span class="am">የተካተቱ ነገሮች</span></h4><div id="dIncludes"></div></div>
+        <div style="background:var(--light);border-radius:12px;padding:1.3rem;margin-bottom:1.3rem">
+          <h4 style="font-weight:700;margin-bottom:.9rem"><span class="en">About the Seller</span><span class="am">ስለ ሻጩ</span></h4>
+          <div style="display:flex;align-items:center;gap:11px;margin-bottom:.8rem">
+            <div class="av" style="width:42px;height:42px;font-size:13px" id="dSelAv">AB</div>
+            <div><div style="font-weight:700" id="dSelName"></div><div style="font-size:12px;color:var(--gray)" id="dSelTitle"></div></div>
+          </div>
+          <p style="font-size:13px;color:var(--gray)" id="dSelBio"></p>
+        </div>
+
+        <!-- REVIEWS SECTION -->
+        <div class="review-section">
+          <h3><span class="en">Customer Reviews</span><span class="am">የደንበኛ ግምገማዎች</span></h3>
+          <div id="reviewsList"></div>
+          <button class="btn btn-outline" style="width:100%;margin-top:10px;padding:11px" onclick="openReviewModal()">
+            <span class="en">+ Write a Review</span><span class="am">+ ግምገማ ይጻፉ</span>
+          </button>
+        </div>
+      </div>
+      <div>
+        <div class="order-card">
+          <div class="order-price" id="dPrice">ETB 500</div>
+          <div class="order-del" id="dDel"></div>
+          <button class="btn btn-solid order-btn" onclick="openPayModal()"><span class="en">Order Now</span><span class="am">አሁን ይዘዙ</span></button>
+          <button class="btn btn-outline order-btn" onclick="showPage('messages')"><span class="en">Contact Seller</span><span class="am">ሻጩን ያነጋግሩ</span></button>
+          <div class="divider"></div>
+          <div style="font-size:12px;color:var(--gray);display:flex;flex-direction:column;gap:5px">
+            <div>✓ <span class="en">Secure payment (Telebirr/CBE)</span><span class="am">ደህንነቱ የተጠበቀ ክፍያ</span></div>
+            <div>✓ <span class="en">On-time delivery guarantee</span><span class="am">ወቅቱን ጠብቆ ዋስትና</span></div>
+            <div>✓ <span class="en">Free revisions included</span><span class="am">ነፃ ማሻሻያዎች ያካትታል</span></div>
+            <div>✓ 24/7 <span class="en">support</span><span class="am">ድጋፍ</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LOGIN ====== -->
+<div class="page" id="loginPage">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">Habesha<span>Gigs</span></div>
+      <p class="auth-sub"><span class="en">Welcome back! Sign in to continue</span><span class="am">እንኳን ደህና መጡ! ለመቀጠል ይግቡ</span></p>
+      <div class="fg"><label><span class="en">Email</span><span class="am">ኢሜይል</span></label><input type="email" id="loginEmail" placeholder="your@email.com"></div>
+      <div class="fg"><label><span class="en">Password</span><span class="am">የይለፍ ቃል</span></label><input type="password" id="loginPw" placeholder="••••••••"></div>
+      <button class="btn btn-solid" style="width:100%;padding:12px;font-size:15px" onclick="doLogin()"><span class="en">Sign In</span><span class="am">ግባ</span></button>
+      <div style="text-align:center;margin-top:10px;font-size:12px"><a href="#" style="color:var(--green);font-weight:600"><span class="en">Forgot password?</span><span class="am">የይለፍ ቃል ረሱ?</span></a></div>
+      <div class="auth-foot"><span class="en">No account?</span><span class="am">አካውንት የለዎትም?</span> <a onclick="showPage('register')"><span class="en">Join free</span><span class="am">በነፃ ይቀላቀሉ</span></a></div>
+      <div class="divider"></div>
+      <button class="btn btn-outline" style="width:100%;font-size:13px;border-color:#dc2626;color:#dc2626" onclick="doAdminLogin()">🔐 <span class="en">Admin Login</span><span class="am">አስተዳዳሪ ግባ</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== REGISTER ====== -->
+<div class="page" id="registerPage">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">Habesha<span>Gigs</span></div>
+      <p class="auth-sub"><span class="en">Create your free account</span><span class="am">ነፃ አካውንት ይፍጠሩ</span></p>
+      <p style="font-size:12px;font-weight:600;text-align:center;margin-bottom:9px"><span class="en">I want to...</span><span class="am">እኔ እፈልጋለሁ...</span></p>
+      <div class="role-pick">
+        <div class="role-opt sel" id="rBuyer" onclick="selRole('buyer')"><div style="font-size:1.4rem">🛒</div><div style="font-weight:700;font-size:13px"><span class="en">Hire Talent</span><span class="am">ተሰጥኦ ቅጠር</span></div></div>
+        <div class="role-opt" id="rSeller" onclick="selRole('seller')"><div style="font-size:1.4rem">💼</div><div style="font-weight:700;font-size:13px"><span class="en">Earn Money</span><span class="am">ገንዘብ ይስሩ</span></div></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label><span class="en">First name</span><span class="am">የመጀመሪያ ስም</span></label><input placeholder="Abebe"></div>
+        <div class="fg"><label><span class="en">Last name</span><span class="am">የአባት ስም</span></label><input placeholder="Kebede"></div>
+      </div>
+      <div class="fg"><label>Email</label><input type="email" placeholder="your@email.com"></div>
+      <div class="fg"><label><span class="en">Phone (Telebirr)</span><span class="am">ስልክ (Telebirr)</span></label><input type="tel" placeholder="0912 345 678"></div>
+      <div class="fg"><label><span class="en">Password</span><span class="am">የይለፍ ቃል</span></label><input type="password" placeholder="Min 8 characters"></div>
+      <div class="fg" id="skillFg" style="display:none"><label><span class="en">Primary skill</span><span class="am">ዋና ክህሎት</span></label>
+        <select><option>Graphic Design</option><option>Web Development</option><option>Translation</option><option>Writing</option><option>Video & Animation</option><option>Social Media</option></select>
+      </div>
+      <button class="btn btn-solid" style="width:100%;padding:12px;font-size:14px" onclick="doRegister()"><span class="en">Create Account</span><span class="am">አካውንት ይፍጠሩ</span></button>
+      <div class="auth-foot"><span class="en">Have an account?</span><span class="am">አካውንት አለዎት?</span> <a onclick="showPage('login')"><span class="en">Sign in</span><span class="am">ግባ</span></a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SELLER DASHBOARD ====== -->
+<div class="page" id="dashPage">
+  <div class="dash-layout">
+    <div class="sidebar">
+      <div class="sb-logo">Habesha<span>Gigs</span></div>
+      <ul class="sb-nav">
+        <li><a class="act" onclick="switchDash('over')">📊 <span class="en">Overview</span><span class="am">አጠቃላይ እይታ</span></a></li>
+        <li><a onclick="switchDash('orders')">📦 <span class="en">Orders</span><span class="am">ትዕዛዞች</span></a></li>
+        <li><a onclick="showPage('messages')">💬 <span class="en">Messages</span><span class="am">መልዕክቶች</span></a></li>
+        <li><a onclick="switchDash('mygigs')">🛍️ <span class="en">My Gigs</span><span class="am">ጊጎቼ</span></a></li>
+        <li><a onclick="switchDash('earnings')">💰 <span class="en">Earnings</span><span class="am">ገቢ</span></a></li>
+        <li><a onclick="showPage('postGig')">➕ <span class="en">Post Gig</span><span class="am">ጊግ አስፍር</span></a></li>
+        <div class="sb-sep"></div>
+        <li><a onclick="switchDash('settings')">⚙️ <span class="en">Settings</span><span class="am">ቅንብሮች</span></a></li>
+        <li><a onclick="doLogout()">🚪 <span class="en">Sign Out</span><span class="am">ውጣ</span></a></li>
+      </ul>
+    </div>
+    <div class="dash-main">
+      <div id="dOver">
+        <div class="dash-hdr"><div><h2><span class="en">Welcome back, Abebe 👋</span><span class="am">እንኳን ደህና መጡ, አበበ 👋</span></h2><p style="color:var(--gray);font-size:12px"><span class="en">Here's what's happening today.</span><span class="am">ዛሬ የሚካሄዱ ነገሮች ናቸው።</span></p></div><button class="btn btn-solid" onclick="showPage('postGig')">+ <span class="en">Post Gig</span><span class="am">ጊግ አስፍር</span></button></div>
+        <div class="metrics">
+          <div class="met"><div class="met-lbl"><span class="en">Total Earnings</span><span class="am">ጠቅላላ ገቢ</span></div><div class="met-val">ETB 14,800</div><div class="met-chg up">↑ 23%</div></div>
+          <div class="met"><div class="met-lbl"><span class="en">Active Orders</span><span class="am">ንቁ ትዕዛዞች</span></div><div class="met-val">7</div><div class="met-chg up">↑ 2 new</div></div>
+          <div class="met"><div class="met-lbl"><span class="en">Avg. Rating</span><span class="am">አማካኝ ደረጃ</span></div><div class="met-val">4.9★</div><div class="met-chg up">84 reviews</div></div>
+          <div class="met"><div class="met-lbl"><span class="en">Response Rate</span><span class="am">የምላሽ መጠን</span></div><div class="met-val">98%</div><div class="met-chg up">Excellent</div></div>
+        </div>
+        <div class="tbl-card">
+          <div class="tbl-head"><span><span class="en">Recent Orders</span><span class="am">የቅርብ ጊዜ ትዕዛዞች</span></span><button class="btn btn-outline btn-sm" onclick="switchDash('orders')"><span class="en">View all</span><span class="am">ሁሉን ይመልከቱ</span></button></div>
+          <table><thead><tr><th>ID</th><th><span class="en">Buyer</span><span class="am">ገዥ</span></th><th><span class="en">Amount</span><span class="am">መጠን</span></th><th><span class="en">Due</span><span class="am">ቀን</span></th><th><span class="en">Status</span><span class="am">ሁኔታ</span></th></tr></thead><tbody id="ordPrev"></tbody></table>
+        </div>
+      </div>
+      <div id="dOrders" style="display:none">
+        <div class="dash-hdr"><h2><span class="en">All Orders</span><span class="am">ሁሉም ትዕዛዞች</span></h2></div>
+        <div class="tbl-card"><table><thead><tr><th>Order#</th><th><span class="en">Service</span><span class="am">አገልግሎት</span></th><th><span class="en">Buyer</span><span class="am">ገዥ</span></th><th>ETB</th><th><span class="en">Due</span><span class="am">ቀን</span></th><th><span class="en">Status</span><span class="am">ሁኔታ</span></th><th></th></tr></thead><tbody id="ordFull"></tbody></table></div>
+      </div>
+      <div id="dMygigs" style="display:none">
+        <div class="dash-hdr"><h2><span class="en">My Gigs</span><span class="am">ጊጎቼ</span></h2><button class="btn btn-solid" onclick="showPage('postGig')">+ <span class="en">New Gig</span><span class="am">አዲስ ጊግ</span></button></div>
+        <div class="gigs-grid" id="myGigGrid"></div>
+      </div>
+      <div id="dEarnings" style="display:none">
+        <div class="dash-hdr"><h2><span class="en">Earnings</span><span class="am">ገቢ</span></h2></div>
+        <div class="metrics" style="grid-template-columns:repeat(3,1fr)">
+          <div class="met"><div class="met-lbl"><span class="en">Available</span><span class="am">ለክፍያ ዝግጁ</span></div><div class="met-val">ETB 9,200</div></div>
+          <div class="met"><div class="met-lbl"><span class="en">Pending</span><span class="am">በመጠበቅ ላይ</span></div><div class="met-val">ETB 3,400</div></div>
+          <div class="met"><div class="met-lbl"><span class="en">Lifetime</span><span class="am">ጠቅላላ</span></div><div class="met-val">ETB 14,800</div></div>
+        </div>
+        <div class="tbl-card">
+          <div class="tbl-head"><span><span class="en">Withdrawals</span><span class="am">ወጪዎች</span></span><button class="btn btn-solid btn-sm" onclick="toast('ትዕዛዝ ተቀምጧል!','ok')"><span class="en">Withdraw</span><span class="am">አውጣ</span></button></div>
+          <table><thead><tr><th><span class="en">Date</span><span class="am">ቀን</span></th><th><span class="en">Method</span><span class="am">ዘዴ</span></th><th><span class="en">Amount</span><span class="am">መጠን</span></th><th>Status</th></tr></thead>
+          <tbody><tr><td>Dec 10</td><td>Telebirr</td><td>ETB 3,000</td><td><span class="status completed">Completed</span></td></tr><tr><td>Nov 28</td><td>CBE Birr</td><td>ETB 2,500</td><td><span class="status completed">Completed</span></td></tr></tbody></table>
+        </div>
+      </div>
+      <div id="dSettings" style="display:none">
+        <div class="dash-hdr"><h2><span class="en">Settings</span><span class="am">ቅንብሮች</span></h2></div>
+        <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:22px;max-width:540px">
+          <div class="form-row"><div class="fg"><label><span class="en">First name</span><span class="am">የመጀመሪያ ስም</span></label><input value="Abebe"></div><div class="fg"><label><span class="en">Last name</span><span class="am">የአባት ስም</span></label><input value="Kebede"></div></div>
+          <div class="fg"><label>Email</label><input type="email" value="abebe@email.com"></div>
+          <div class="fg"><label><span class="en">Phone</span><span class="am">ስልክ</span></label><input value="0912 345 678"></div>
+          <div class="fg"><label>Bio</label><textarea>Professional graphic designer with 5+ years of experience.</textarea></div>
+          <button class="btn btn-solid" onclick="toast('Profile saved / መረጃ ተቀምጧል','ok')"><span class="en">Save Changes</span><span class="am">ለውጦች አስቀምጥ</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ADMIN PANEL ====== -->
+<div class="page" id="adminPage">
+  <div class="admin-layout">
+    <div class="admin-sidebar">
+      <div class="admin-sb-top">
+        <div class="admin-logo">Habesha<span style="color:var(--gold)">Gigs</span> <span class="admin-badge">ADMIN</span></div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:4px">Super Admin Panel</div>
+      </div>
+      <ul class="admin-sb-nav">
+        <li><a class="act" onclick="switchAdmin('over')">📊 Dashboard</a></li>
+        <li><a onclick="switchAdmin('users')">👥 Users</a></li>
+        <li><a onclick="switchAdmin('gigs')">🛍️ Gigs</a></li>
+        <li><a onclick="switchAdmin('orders')">📦 Orders</a></li>
+        <li><a onclick="switchAdmin('reviews')">⭐ Reviews</a></li>
+        <li><a onclick="switchAdmin('payments')">💰 Payments</a></li>
+        <div class="admin-sep"></div>
+        <li><a onclick="switchAdmin('settings')">⚙️ Settings</a></li>
+        <li><a onclick="doLogout()">🚪 Exit Admin</a></li>
+      </ul>
+    </div>
+    <div class="admin-main">
+
+      <!-- ADMIN OVERVIEW -->
+      <div id="aOver">
+        <div class="admin-hdr"><h2>Admin Dashboard</h2><div style="font-size:13px;color:var(--gray)">Last updated: just now</div></div>
+        <div class="admin-metrics">
+          <div class="amet"><div class="amet-icon">👥</div><div class="amet-val" style="color:#1d4ed8">12,432</div><div class="amet-lbl">Total Users</div><div class="amet-chg up">↑ 124 this week</div></div>
+          <div class="amet"><div class="amet-icon">🛍️</div><div class="amet-val" style="color:var(--green)">8,841</div><div class="amet-lbl">Active Gigs</div><div class="amet-chg up">↑ 38 today</div></div>
+          <div class="amet"><div class="amet-icon">💰</div><div class="amet-val" style="color:var(--gold)">ETB 2.4M</div><div class="amet-lbl">Platform Revenue</div><div class="amet-chg up">↑ 18% MoM</div></div>
+          <div class="amet"><div class="amet-icon">⭐</div><div class="amet-val" style="color:#7c3aed">1,240</div><div class="amet-lbl">New Reviews</div><div class="amet-chg up">↑ 42 today</div></div>
+        </div>
+        <!-- Revenue Chart -->
+        <div class="admin-section">
+          <div class="admin-section-head"><span>Monthly Revenue (ETB)</span></div>
+          <div class="revenue-chart">
+            <div class="rev-bars" id="revBars"></div>
+            <div class="rev-labels" id="revLabels"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="admin-section">
+            <div class="admin-section-head"><span>New Users Today</span><span class="status new">+24</span></div>
+            <table><thead><tr><th>Name</th><th>Role</th><th>Joined</th></tr></thead><tbody>
+              <tr><td>Meron Girma</td><td><span class="status active">Buyer</span></td><td>2h ago</td></tr>
+              <tr><td>Dawit Fikre</td><td><span class="status new">Seller</span></td><td>3h ago</td></tr>
+              <tr><td>Sara Haile</td><td><span class="status active">Buyer</span></td><td>5h ago</td></tr>
+            </tbody></table>
+          </div>
+          <div class="admin-section">
+            <div class="admin-section-head"><span>Pending Approvals</span><span class="status pending">5</span></div>
+            <table><thead><tr><th>Gig</th><th>Seller</th><th>Action</th></tr></thead><tbody>
+              <tr><td>Logo Design</td><td>Yonas B.</td><td><div style="display:flex;gap:5px"><button class="btn btn-solid btn-sm" onclick="toast('Gig approved!','ok')">✓</button><button class="btn btn-sm btn-red" onclick="toast('Gig rejected','err')">✗</button></div></td></tr>
+              <tr><td>SEO Writing</td><td>Hana G.</td><td><div style="display:flex;gap:5px"><button class="btn btn-solid btn-sm" onclick="toast('Gig approved!','ok')">✓</button><button class="btn btn-sm btn-red" onclick="toast('Gig rejected','err')">✗</button></div></td></tr>
+              <tr><td>Translation</td><td>Biruk T.</td><td><div style="display:flex;gap:5px"><button class="btn btn-solid btn-sm" onclick="toast('Gig approved!','ok')">✓</button><button class="btn btn-sm btn-red" onclick="toast('Gig rejected','err')">✗</button></div></td></tr>
+            </tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADMIN USERS -->
+      <div id="aUsers" style="display:none">
+        <div class="admin-hdr"><h2>User Management</h2><div style="display:flex;gap:9px"><button class="btn btn-solid btn-sm" onclick="toast('CSV exported!','ok')">Export CSV</button></div></div>
+        <div class="admin-section">
+          <div class="admin-section-head"><span>All Users (12,432)</span></div>
+          <div class="search-bar"><input placeholder="Search by name or email..."><select style="width:auto;padding:8px 12px"><option>All roles</option><option>Buyers</option><option>Sellers</option></select></div>
+          <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+            <tr><td><b>Almaz Kebede</b></td><td>almaz@email.com</td><td><span class="status new">Seller</span></td><td>Jan 2024</td><td><span class="status active">Active</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-outline btn-sm" onclick="toast('Viewing user...')">View</button><button class="btn btn-sm btn-red" onclick="toast('User suspended','err')">Suspend</button></div></td></tr>
+            <tr><td><b>Dawit Haile</b></td><td>dawit@email.com</td><td><span class="status new">Seller</span></td><td>Feb 2024</td><td><span class="status active">Active</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-outline btn-sm" onclick="toast('Viewing user...')">View</button><button class="btn btn-sm btn-red" onclick="toast('User suspended','err')">Suspend</button></div></td></tr>
+            <tr><td><b>Kebede Tessema</b></td><td>kebede@email.com</td><td><span class="status active">Buyer</span></td><td>Mar 2024</td><td><span class="status active">Active</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-outline btn-sm" onclick="toast('Viewing user...')">View</button><button class="btn btn-sm btn-red" onclick="toast('User suspended','err')">Suspend</button></div></td></tr>
+            <tr><td><b>Tigist Alemu</b></td><td>tigist@email.com</td><td><span class="status active">Buyer</span></td><td>Apr 2024</td><td><span class="status suspended">Suspended</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-outline btn-sm" onclick="toast('User activated','ok')">Restore</button></div></td></tr>
+          </tbody></table>
+        </div>
+      </div>
+
+      <!-- ADMIN GIGS -->
+      <div id="aGigs" style="display:none">
+        <div class="admin-hdr"><h2>Gig Management</h2></div>
+        <div class="admin-section">
+          <div class="admin-section-head"><span>All Gigs (8,841)</span></div>
+          <div class="search-bar"><input placeholder="Search gigs..."><select style="width:auto;padding:8px 12px"><option>All categories</option><option>Design</option><option>Tech</option><option>Writing</option></select></div>
+          <table><thead><tr><th>Gig Title</th><th>Seller</th><th>Category</th><th>Price</th><th>Status</th><th>Featured</th><th>Actions</th></tr></thead><tbody id="adminGigTable"></tbody></table>
+        </div>
+      </div>
+
+      <!-- ADMIN ORDERS -->
+      <div id="aOrders" style="display:none">
+        <div class="admin-hdr"><h2>Order Management</h2></div>
+        <div class="admin-section">
+          <div class="admin-section-head"><span>All Orders</span></div>
+          <table><thead><tr><th>Order#</th><th>Service</th><th>Buyer</th><th>Seller</th><th>Amount</th><th>Platform Fee</th><th>Status</th></tr></thead><tbody>
+            <tr><td>#ORD-001</td><td>Logo Design</td><td>Kebede T.</td><td>Almaz K.</td><td>ETB 500</td><td><span style="color:var(--green);font-weight:700">ETB 75</span></td><td><span class="status active">Active</span></td></tr>
+            <tr><td>#ORD-002</td><td>Website Build</td><td>Tigist Hotel</td><td>Dawit H.</td><td>ETB 2,500</td><td><span style="color:var(--green);font-weight:700">ETB 375</span></td><td><span class="status active">Active</span></td></tr>
+            <tr><td>#ORD-003</td><td>Blog Article</td><td>Mekdes A.</td><td>Sara A.</td><td>ETB 250</td><td><span style="color:var(--green);font-weight:700">ETB 37</span></td><td><span class="status completed">Completed</span></td></tr>
+            <tr><td>#ORD-004</td><td>Translation</td><td>UN Ethiopia</td><td>Biruk T.</td><td>ETB 900</td><td><span style="color:var(--green);font-weight:700">ETB 135</span></td><td><span class="status pending">Pending</span></td></tr>
+          </tbody></table>
+        </div>
+      </div>
+
+      <!-- ADMIN REVIEWS -->
+      <div id="aReviews" style="display:none">
+        <div class="admin-hdr"><h2>Review Moderation</h2></div>
+        <div class="admin-section">
+          <div class="admin-section-head"><span>All Reviews</span><span class="status new">1,240 total</span></div>
+          <table><thead><tr><th>Reviewer</th><th>Gig</th><th>Rating</th><th>Review</th><th>Date</th><th>Actions</th></tr></thead><tbody id="adminReviewTable"></tbody></table>
+        </div>
+      </div>
+
+      <!-- ADMIN PAYMENTS -->
+      <div id="aPayments" style="display:none">
+        <div class="admin-hdr"><h2>Payment Management</h2></div>
+        <div class="admin-metrics" style="grid-template-columns:repeat(3,1fr)">
+          <div class="amet"><div class="amet-icon">💳</div><div class="amet-val">ETB 2.4M</div><div class="amet-lbl">Total Processed</div></div>
+          <div class="amet"><div class="amet-icon">🏦</div><div class="amet-val">ETB 360K</div><div class="amet-lbl">Platform Revenue (15%)</div></div>
+          <div class="amet"><div class="amet-icon">⏳</div><div class="amet-val">ETB 42K</div><div class="amet-lbl">Pending Payouts</div></div>
+        </div>
+        <div class="admin-section">
+          <div class="admin-section-head"><span>Pending Withdrawals</span></div>
+          <table><thead><tr><th>Seller</th><th>Method</th><th>Amount</th><th>Requested</th><th>Action</th></tr></thead><tbody>
+            <tr><td>Almaz Kebede</td><td>Telebirr</td><td>ETB 3,000</td><td>2h ago</td><td><button class="btn btn-solid btn-sm" onclick="toast('Payment approved!','ok')">Approve</button></td></tr>
+            <tr><td>Dawit Haile</td><td>CBE Birr</td><td>ETB 6,200</td><td>5h ago</td><td><button class="btn btn-solid btn-sm" onclick="toast('Payment approved!','ok')">Approve</button></td></tr>
+          </tbody></table>
+        </div>
+      </div>
+
+      <!-- ADMIN SETTINGS -->
+      <div id="aSettings" style="display:none">
+        <div class="admin-hdr"><h2>Platform Settings</h2></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="admin-section">
+            <div class="admin-section-head"><span>Commission Rate</span></div>
+            <div style="padding:18px">
+              <div class="fg"><label>Platform Commission (%)</label><input type="number" value="15" min="5" max="30"></div>
+              <div class="fg"><label>Minimum Gig Price (ETB)</label><input type="number" value="100"></div>
+              <button class="btn btn-solid btn-sm" onclick="toast('Settings saved!','ok')">Save</button>
+            </div>
+          </div>
+          <div class="admin-section">
+            <div class="admin-section-head"><span>Platform Features</span></div>
+            <div style="padding:18px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px"><span>New Registrations</span><label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px"><span>Gig Reviews</span><label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px"><span>Maintenance Mode</span><label class="toggle-switch"><input type="checkbox"><span class="slider"></span></label></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px"><span>Email Notifications</span><label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- POST GIG -->
+<div class="page" id="postGigPage">
+
+// This is the function that was missing the closing brace
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.innerText = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => { t.className = 'toast'; }, 3000);
+} // <--- THIS WAS THE MISSING BRACE TURNING EVERYTHING GREY!
+
+function changeCat(c) {
+  filterCat = c;
+  renderGigs();
+}
+
+async function renderGigs() {
+  const grid = document.getElementById('gigGrid');
+  if (!grid) return;
+  grid.innerHTML = '<p style="padding:20px; text-align:center; grid-column:1/-1;">Loading...</p>';
+    dbGigs.forEach(g => {
+      const card = document.createElement('div');
+      card.className = 'gig-card';
+      card.onclick = () => showGigDetail(g.id);
+      
+      card.innerHTML = `
+        <div class="gig-img-cont">
+          <div class="gig-badge">${g.category || 'New'}</div>
+          <div style="font-size:40px; text-align:center; padding:20px;">✨</div>
+        </div>
+        <div class="gig-info">
+          <div class="gig-seller">
+            <div class="seller-avatar">${g.sellerName ? g.sellerName.charAt(0) : 'U'}</div>
+            <span>${g.sellerName || 'Anonymous'}</span>
+          </div>
+          <div class="gig-title">${g.title}</div>
+          <div class="gig-meta">
+            <span class="gig-rating">⭐ 5.0</span>
+          </div>
+          <div class="gig-footer">
+            <span class="gig-price">From $${g.price}</span>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  } catch (err) {
+    console.error("Fetch Error:", err);
+    grid.innerHTML = '<p style="color:red; padding:20px; text-align:center; grid-column: 1/-1;">Check server on Port 5001</p>';
+  }
+}
+
+// --- END OF RENDER GIGS ---
+
+
+<div class="msg-list">
+        <div class="msg-list-head"><span class="en">Conversations</span><span class="am">ውይይቶች</span></div>
+        <div id="msgThreads"></div>
+      </div>
+      <div class="chat-area">
+        <div class="chat-hdr"><div class="av" style="width:30px;height:30px" id="chatAv">AK</div><span id="chatNm">Almaz Kebede</span></div>
+        <div class="chat-msgs" id="chatMsgs"></div>
+        <div class="chat-inp"><input type="text" id="msgIn" placeholder="Type a message... / መልዕክት ይጻፉ..." onkeydown="if(event.key==='Enter')sendMsg()"><button onclick="sendMsg()"><span class="en">Send</span><span class="am">ላክ</span></button></div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="page" id="howItWorksPage">
+  <div style="background:var(--green);padding:48px 2rem;text-align:center">
+    <h1 style="font-family:var(--fh);color:#fff;font-size:2.3rem;margin-bottom:.8rem"><span class="en">How HabeshaGigs Works</span><span class="am">HabeshaGigs እንዴት ይሰራል</span></h1>
+    <p style="color:rgba(255,255,255,.8)"><span class="en">Connecting Ethiopian talent with opportunity</span><span class="am">የኢትዮጵያ ተሰጥኦን ከዕድል ጋር ያገናኛል</span></p>
+  </div>
+  <div class="section"><div class="section-inner">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:3rem;max-width:860px;margin:0 auto">
+      <div><h2 style="font-family:var(--fh);color:var(--green);margin-bottom:1rem"><span class="en">For Buyers</span><span class="am">ለገዥዎች</span></h2>
+        <div style="display:flex;flex-direction:column;gap:1.3rem">
+          <div style="display:flex;gap:12px"><div style="width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">1</div><div><strong><span class="en">Search & discover</span><span class="am">ይፈልጉ እና ያግኙ</span></strong><br><span style="font-size:12px;color:var(--gray)"><span class="en">Browse gigs across all categories.</span><span class="am">በሁሉም ምድቦች ይሰብስቡ።</span></span></div></div>
+          <div style="display:flex;gap:12px"><div style="width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">2</div><div><strong><span class="en">Order securely</span><span class="am">ዋስትና ባለው ሁኔታ ይዘዙ</span></strong><br><span style="font-size:12px;color:var(--gray)"><span class="en">Pay with Telebirr, CBE Birr, or Chapa.</span><span class="am">Telebirr፣ CBE Birr ወይም Chapa ይጠቀሙ።</span></span></div></div>
+          <div style="display:flex;gap:12px"><div style="width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">3</div><div><strong><span class="en">Receive & review</span><span class="am">ይቀበሉ እና ይገምግሙ</span></strong><br><span style="font-size:12px;color:var(--gray)"><span class="en">Approve and release payment when satisfied.</span><span class="am">ሲረኩ ያጸድቁ እና ክፍያ ይለቁ።</span></span></div></div>
+        </div>
+      </div>
+      <div><h2 style="font-family:var(--fh);color:var(--gold);margin-bottom:1rem"><span class="en">For Sellers</span><span class="am">ለሻጭዎች</span></h2>
+        <div style="display:flex;flex-direction:column;gap:1.3rem">
+          <div style="display:flex;gap:12px"><div style="width:34px;height:34px;border-radius:50%;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">1</div><div><strong><span class="en">Create profile</span><span class="am">ፕሮፋይል ይፍጠሩ</span></strong><br><span style="font-size:12px;color:var(--gray)"><span class="en">Showcase your skills free.</span><span class="am">ክህሎቶቻዎን ነፃ ያሳዩ።</span></span></div></div>
+          <div style="display:flex;gap:12px"><div style="width:34px;height:34px;border-radius:50%;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">2</div><div><strong><span class="en">Post gigs</span><span class="am">ጊጎች ያስፍሩ</span></strong><br><span style="font-size:12px;color:var(--gray)"><span class="en">List services from ETB 100.</span><span class="am">አገልግሎቶችን ከ 100 ብር ይዘርዝሩ።</span></span></div></div>
+          <div style="display:flex;gap:12px"><div style="width:34px;height:34px;border-radius:50%;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">3</div><div><strong><span class="en">Earn & withdraw</span><span class="am">ይስሩ እና ያውጡ</span></strong><br><span style="font-size:12px;color:var(--gray)"><span class="en">Withdraw directly to Telebirr or bank.</span><span class="am">ወደ Telebirr ወይም ባንክ ቀጥታ ያውጡ።</span></span></div></div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:2.5rem"><button class="btn btn-solid" style="padding:13px 36px;font-size:15px" onclick="showPage('register')"><span class="en">Start earning today →</span><span class="am">ዛሬ ይጀምሩ →</span></button></div>
+  </div></div>
+</div>
+
+<script>
+// ===== DATA =====
+const GIGS=[
+  {id:1,title:"Professional logo design for your business",seller:"Almaz Kebede",ini:"AK",cat:"Graphic Design",price:500,rating:4.9,rev:124,icon:"🎨",badge:"Best Seller",del:"3 days",desc:"A stunning modern logo tailored to your brand. Perfect for startups, restaurants, NGOs, and enterprises across Ethiopia.",inc:["3 unique logo concepts","High-res PNG, AI & PDF files","2 rounds of revisions","Color & B&W versions","Social media kit"],tags:["Logo","Branding","Design"],bio:"Top-rated designer. 300+ satisfied clients across Ethiopia.",title2:"Brand Identity Designer",reviews:[{name:"Meseret T.",stars:5,text:"Outstanding! Delivered exactly what I wanted.",date:"Dec 10"},{name:"Bekele A.",stars:5,text:"Very professional and fast. Will order again.",date:"Nov 28"}]},
+  {id:2,title:"Amharic-English translation with perfect accuracy",seller:"Biruk Tadesse",ini:"BT",cat:"Translation",price:300,rating:5.0,rev:89,icon:"🌍",badge:null,del:"2 days",desc:"Accurate Amharic ↔ English translation for documents, websites, legal texts, marketing materials. Native speaker.",inc:["Certified translation","Legal document support","2 revisions","Proof of certification"],tags:["Amharic","Translation","English"],bio:"Certified translator. MBA graduate. Worked with NGOs.",title2:"Certified Translator",reviews:[{name:"UN Ethiopia",stars:5,text:"Excellent quality and very professional.",date:"Dec 5"}]},
+  {id:3,title:"Build a fast, responsive website for your business",seller:"Dawit Haile",ini:"DH",cat:"Web Dev",price:2500,rating:4.8,rev:56,icon:"💻",badge:"Top Rated",del:"7 days",desc:"Modern, mobile-friendly website for restaurants, hotels, clinics, NGOs, and small businesses across Ethiopia.",inc:["Up to 5 pages","Mobile responsive","Contact form","Google Maps integration","1 month support"],tags:["Website","HTML/CSS","React"],bio:"Full-stack developer, 4+ years. 100+ websites built.",title2:"Web Developer",reviews:[{name:"Tigist Hotel",stars:5,text:"Perfect website! Exactly what we needed.",date:"Nov 20"}]},
+  {id:4,title:"Professional video editing and color grading",seller:"Hanna Girma",ini:"HG",cat:"Video & Animation",price:800,rating:4.7,rev:43,icon:"🎬",badge:null,del:"5 days",desc:"Cinema-quality video editing for YouTube, Instagram, corporate videos, event highlights, and music videos.",inc:["Up to 10 min video","Color grading","Background music","Titles & subtitles","HD export"],tags:["Video Editing","Premiere Pro","Color Grading"],bio:"Film graduate. 50+ commercial projects delivered.",title2:"Video Editor",reviews:[]},
+  {id:5,title:"SEO blog posts and website content in Amharic or English",seller:"Sara Alemu",ini:"SA",cat:"Writing",price:250,rating:4.9,rev:201,icon:"✍️",badge:"Best Seller",del:"2 days",desc:"High-quality, SEO-optimized articles, blog posts, and web content that ranks on Google.",inc:["500-1000 word article","SEO keyword research","Meta description","2 revisions","Plagiarism-free"],tags:["SEO","Content","Amharic"],bio:"Former journalist. Now content specialist.",title2:"Content Writer",reviews:[{name:"Mekdes A.",stars:5,text:"Great writer! Very engaging content.",date:"Dec 8"}]},
+  {id:6,title:"Social media management and content creation",seller:"Yonas Belay",ini:"YB",cat:"Social Media",price:1200,rating:4.8,rev:67,icon:"📱",badge:null,del:"monthly",desc:"Complete social media management for Instagram, Facebook, TikTok, and Telegram.",inc:["20 posts per month","Stories & Reels","Engagement strategy","Monthly report","Competitor analysis"],tags:["Instagram","Facebook","Strategy"],bio:"Digital marketing specialist. 3 years managing brands.",title2:"Social Media Manager",reviews:[]},
+  {id:7,title:"Data entry and Excel spreadsheet management",seller:"Meron Desta",ini:"MD",cat:"Data Entry",price:150,rating:4.6,rev:38,icon:"📊",badge:null,del:"1 day",desc:"Fast, accurate data entry, spreadsheet organization, data cleaning and Excel templates.",inc:["Up to 500 records","Error-free guarantee","Excel formulas","Data formatting","24hr delivery"],tags:["Excel","Data Entry","Spreadsheets"],bio:"Accountant & data specialist. 5+ years experience.",title2:"Data Specialist",reviews:[]},
+  {id:8,title:"Professional headshots and product photography",seller:"Tewodros Fikre",ini:"TF",cat:"Photography",price:600,rating:4.9,rev:91,icon:"📸",badge:"Top Rated",del:"3 days",desc:"Studio-quality product photography and professional headshots. Based in Addis Ababa.",inc:["2-hour photo session","20 edited photos","High resolution files","Online gallery","Print-ready files"],tags:["Photography","Product","Headshots"],bio:"Commercial photographer. Featured in Ethiopian business magazines.",title2:"Photographer",reviews:[{name:"Addis Fashion",stars:5,text:"Amazing photos! Our products look incredible.",date:"Dec 1"}]},
+];
+const ORDERS=[
+  {id:"ORD-001",svc:"Logo Design",buyer:"Kebede T.",amt:"ETB 500",due:"Dec 20",status:"active"},
+  {id:"ORD-002",svc:"Website Build",buyer:"Tigist Hotel",amt:"ETB 2,500",due:"Dec 22",status:"active"},
+  {id:"ORD-003",svc:"Blog Article",buyer:"Mekdes A.",amt:"ETB 250",due:"Dec 18",status:"completed"},
+  {id:"ORD-004",svc:"Translation",buyer:"UN Ethiopia",amt:"ETB 900",due:"Dec 25",status:"pending"},
+  {id:"ORD-005",svc:"Social Media",buyer:"Addis Fashion",amt:"ETB 1,200",due:"Jan 1",status:"active"},
+];
+const MSGS=[
+  {id:1,name:"Almaz Kebede",ini:"AK",snip:"Can you add one more revision?",time:"2m",msgs:[{from:"them",text:"Hi! I ordered the logo design. Can you add one more revision?"},{from:"me",text:"Of course! Please send your feedback and I'll start right away."},{from:"them",text:"Perfect! Will send details shortly."}]},
+  {id:2,name:"Dawit Haile",ini:"DH",snip:"The website is ready for review",time:"1h",msgs:[{from:"them",text:"Hi, the website is ready. Please check the staging link."},{from:"me",text:"Great! Reviewing today."}]},
+  {id:3,name:"Sara Alemu",ini:"SA",snip:"Article delivered ✓",time:"3h",msgs:[{from:"them",text:"Your blog article is delivered. Please check your order."},{from:"me",text:"Looks great, thank you!"}]},
+];
+
+let curPage='home',prevPage2='home',activeFilt='all',curGig=null,selPay2='Telebirr',loggedIn=false,isAdmin=false,activeMsg2=0;
+let chatMsgsArr=[...MSGS[0].msgs];
+let curRating=0;
+
+// ===== LANGUAGE =====
+let lang='en';
+function setLang(l){
+  lang=l;
+  document.body.classList.toggle('amharic',l==='am');
+  document.getElementById('btnEN').classList.toggle('active',l==='en');
+  document.getElementById('btnAM').classList.toggle('active',l==='am');
+}
+
+// ===== NAVIGATION =====
+function showPage(p){
+  prevPage2=curPage;curPage=p;
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  const el=document.getElementById(p+'Page');
+  if(el)el.classList.add('active');
+  window.scrollTo(0,0);
+  if(p==='browse')renderBrowse();
+  if(p==='messages')renderMsgs();
+  if(p==='dashboard'){if(!loggedIn){showPage('login');return;}renderDash();}
+  if(p==='postGig'&&!loggedIn){showPage('login');return;}
+  if(p==='admin'){if(!isAdmin){showPage('login');return;}renderAdmin();}
+  if(p==='home')document.getElementById('homeGrid').innerHTML=GIGS.slice(0,4).map(gigCard).join('');
+}
+function goBack(){showPage(prevPage2==='gigDetail'?'browse':prevPage2);}
+
+// ===== GIG CARDS =====
+function gigCard(g){
+  return `<div class="gig-card" onclick="openGig(${g.id})">
+    <div class="gig-img">${g.icon}${g.badge?`<span class="gig-badge">${g.badge}</span>`:''}</div>
+    <div class="gig-body">
+      <div class="gig-seller"><div class="av">${g.ini}</div><span style="font-size:12px;color:var(--gray)">${g.seller}</span></div>
+      <div class="gig-title">${g.title}</div>
+      <div class="gig-rating"><span class="stars">★★★★★</span><span style="font-size:11px;color:var(--gray)"> ${g.rating} (${g.rev})</span></div>
+      <div class="gig-footer">
+        <div class="gig-price">ETB ${g.price.toLocaleString()} <span>starting</span></div>
+        <button class="fav-btn" onclick="event.stopPropagation();this.classList.toggle('faved');this.textContent=this.classList.contains('faved')?'♥':'♡'">♡</button>
+      </div>
+    </div>
+  </div>`;
+}
+function openGig(id){
+  curGig=GIGS.find(g=>g.id===id);if(!curGig)return;
+  document.getElementById('dImg').textContent=curGig.icon;
+  document.getElementById('dTitle').textContent=curGig.title;
+  document.getElementById('dPrice').textContent=`ETB ${curGig.price.toLocaleString()}`;
+  document.getElementById('dDel').textContent=`✓ Delivery: ${curGig.del}`;
+  document.getElementById('dDesc').textContent=curGig.desc;
+  document.getElementById('dSelAv').textContent=curGig.ini;
+  document.getElementById('dSelName').textContent=curGig.seller;
+  document.getElementById('dSelTitle').textContent=curGig.title2;
+  document.getElementById('dSelBio').textContent=curGig.bio;
+  document.getElementById('dTags').innerHTML=curGig.tags.map(t=>`<span class="tag">${t}</span>`).join('');
+  document.getElementById('dIncludes').innerHTML=curGig.inc.map(i=>`<div class="inc-item"><span class="inc-check">✓</span><span>${i}</span></div>`).join('');
+  renderReviews();
+  showPage('gigDetail');
+}
+function renderReviews(){
+  if(!curGig)return;
+  const container=document.getElementById('reviewsList');
+  if(!curGig.reviews||curGig.reviews.length===0){container.innerHTML=`<p style="font-size:13px;color:var(--gray);margin-bottom:10px">${lang==='am'?'ምንም ግምገማ የለም።':'No reviews yet. Be the first!'}</p>`;return;}
+  container.innerHTML=curGig.reviews.map(r=>`
+    <div class="review-card">
+      <div class="rc-top"><span class="rc-name">${r.name}</span><span class="rc-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</span></div>
+      <div class="rc-text">${r.text}</div>
+      <div class="rc-date">${r.date}</div>
+    </div>`).join('');
+}
+function renderBrowse(){
+  let gigs=[...GIGS];
+  if(activeFilt!=='all')gigs=gigs.filter(g=>g.cat===activeFilt);
+  const s=document.getElementById('sortSel').value;
+  if(s==='pa')gigs.sort((a,b)=>a.price-b.price);
+  else if(s==='pd')gigs.sort((a,b)=>b.price-a.price);
+  else if(s==='new')gigs.sort((a,b)=>b.id-a.id);
+  document.getElementById('browseGrid').innerHTML=gigs.length?gigs.map(gigCard).join(''):'<p style="color:var(--gray);padding:2rem">No gigs found.</p>';
+}
+function filterCat(cat){
+  activeFilt=cat;
+  document.getElementById('browseTitle').textContent=cat;
+  document.getElementById('browseSubtitle').textContent=`Showing ${cat} gigs`;
+  showPage('browse');
+}
+function setFilt(el,cat){
+  activeFilt=cat;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderBrowse();
+}
+function doSearch(){
+  const q=document.getElementById('heroSearch').value.toLowerCase().trim();
+  if(!q)return;
+  activeFilt='all';showPage('browse');
+  const r=GIGS.filter(g=>g.title.toLowerCase().includes(q)||g.cat.toLowerCase().includes(q));
+  document.getElementById('browseTitle').textContent=`"${q}"`;
+  document.getElementById('browseSubtitle').textContent=`${r.length} results found`;
+  document.getElementById('browseGrid').innerHTML=r.length?r.map(gigCard).join(''):'<p style="color:var(--gray);padding:2rem">No results found.</p>';
+}
+
+// ===== REVIEW SYSTEM =====
+function openReviewModal(){
+  if(!curGig)return;
+  curRating=0;
+  document.getElementById('reviewGigTitle').textContent=curGig.title;
+  document.getElementById('reviewText').value='';
+  document.getElementById('reviewName').value='';
+  document.querySelectorAll('.star-pick').forEach(s=>s.classList.remove('lit'));
+  document.getElementById('reviewModal').style.display='flex';
+}
+function setRating(n){
+  curRating=n;
+  document.querySelectorAll('.star-pick').forEach(s=>{s.classList.toggle('lit',parseInt(s.dataset.v)<=n);});
+}
+function submitReview(){
+  const text=document.getElementById('reviewText').value.trim();
+  const name=document.getElementById('reviewName').value.trim();
+  if(!curRating){toast(lang==='am'?'እባክዎ ደረጃ ይምረጡ':'Please select a rating','err');return;}
+  if(!text){toast(lang==='am'?'ግምገማ ይጻፉ':'Please write a review','err');return;}
+  if(!name){toast(lang==='am'?'ስምዎን ያስፍሩ':'Please enter your name','err');return;}
+  const today=new Date();
+  const dateStr=today.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(!curGig.reviews)curGig.reviews=[];
+  curGig.reviews.unshift({name,stars:curRating,text,date:dateStr});
+  closeModal('reviewModal');
+  renderReviews();
+  curGig.rev=(curGig.rev||0)+1;
+  toast(lang==='am'?'ግምገማዎ ተቀምጧል! አመሰግናለሁ ✓':'Review submitted! Thank you ✓','ok');
+}
+
+// ===== AUTH =====
+let userRole='buyer';
+function selRole(r){userRole=r;document.getElementById('rBuyer').classList.toggle('sel',r==='buyer');document.getElementById('rSeller').classList.toggle('sel',r==='seller');document.getElementById('skillFg').style.display=r==='seller'?'block':'none';}
+function doLogin(){
+  loggedIn=true;isAdmin=false;
+  document.getElementById('navRight').innerHTML=`<button class="btn btn-outline btn-sm" onclick="showPage('messages')">💬</button><div style="width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer;font-size:11px" onclick="showPage('dashboard')">AK</div>`;
+  toast(lang==='am'?'እንኳን ደህና መጡ, አበበ! 👋':'Welcome back, Abebe! 👋','ok');
+  showPage('dashboard');
+}
+function doAdminLogin(){
+  loggedIn=true;isAdmin=true;
+  document.getElementById('navRight').innerHTML=`<span style="background:#dc2626;color:#fff;font-size:11px;padding:3px 10px;border-radius:6px;font-weight:700">ADMIN</span><div style="width:34px;height:34px;border-radius:50%;background:#dc2626;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer;font-size:11px" onclick="showPage('admin')">SA</div>`;
+  toast('Admin access granted!','ok');
+  showPage('admin');
+}
+function doRegister(){
+  loggedIn=true;isAdmin=false;
+  document.getElementById('navRight').innerHTML=`<button class="btn btn-outline btn-sm" onclick="showPage('messages')">💬</button><div style="width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer;font-size:11px" onclick="showPage('dashboard')">AK</div>`;
+  toast(lang==='am'?'አካውንቱ ተፈጥሯል! 🎉':'Account created! Welcome 🎉','ok');
+  showPage(userRole==='seller'?'postGig':'browse');
+}
+function doLogout(){
+  loggedIn=false;isAdmin=false;
+  document.getElementById('navRight').innerHTML=`<button class="btn btn-outline" onclick="showPage('login')"><span class="en">Sign In</span><span class="am">ግባ</span></button><button class="btn btn-solid" onclick="showPage('register')"><span class="en">Join Free</span><span class="am">በነፃ ይቀላቀሉ</span></button>`;
+  setLang(lang);
+  toast(lang==='am'?'ወጥተዋል':'Signed out successfully');
+  showPage('home');
+}
+
+// ===== DASHBOARD =====
+function renderDash(){
+  document.getElementById('ordPrev').innerHTML=ORDERS.slice(0,4).map(o=>`<tr><td style="font-weight:600">${o.id}</td><td>${o.buyer}</td><td style="font-weight:700;color:var(--green)">${o.amt}</td><td>${o.due}</td><td><span class="status ${o.status}">${o.status.charAt(0).toUpperCase()+o.status.slice(1)}</span></td></tr>`).join('');
+  document.getElementById('ordFull').innerHTML=ORDERS.map(o=>`<tr><td style="color:var(--green);font-weight:700">${o.id}</td><td>${o.svc}</td><td>${o.buyer}</td><td>${o.amt}</td><td>${o.due}</td><td><span class="status ${o.status}">${o.status.charAt(0).toUpperCase()+o.status.slice(1)}</span></td><td><button class="btn btn-outline btn-sm" onclick="toast('Opening ${o.id}...')">View</button></td></tr>`).join('');
+  document.getElementById('myGigGrid').innerHTML=GIGS.slice(0,4).map(gigCard).join('');
+}
+function switchDash(p){
+  ['dOver','dOrders','dMygigs','dEarnings','dSettings'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+  const el=document.getElementById('d'+p.charAt(0).toUpperCase()+p.slice(1));
+  if(el)el.style.display='block';
+  document.querySelectorAll('.sb-nav li a').forEach(a=>a.classList.remove('act'));
+}
+
+// ===== ADMIN =====
+function renderAdmin(){
+  const months=['Jul','Aug','Sep','Oct','Nov','Dec'];
+  const revs=[120,180,240,190,310,420];
+  const maxR=Math.max(...revs);
+  document.getElementById('revBars').innerHTML=revs.map((v,i)=>`<div class="rev-bar" style="height:${Math.round(v/maxR*90)}px" title="ETB ${(v*1000).toLocaleString()}"></div>`).join('');
+  document.getElementById('revLabels').innerHTML=months.map(m=>`<div class="rev-lbl">${m}</div>`).join('');
+  document.getElementById('adminGigTable').innerHTML=GIGS.map(g=>`<tr>
+    <td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.title}</td>
+    <td>${g.seller}</td><td>${g.cat}</td>
+    <td style="font-weight:700;color:var(--green)">ETB ${g.price}</td>
+    <td><span class="status active">Active</span></td>
+    <td><label class="toggle-switch" style="display:inline-block"><input type="checkbox" ${g.badge?'checked':''}><span class="slider"></span></label></td>
+    <td><div style="display:flex;gap:5px"><button class="btn btn-outline btn-sm" onclick="toast('Editing gig...')">Edit</button><button class="btn btn-sm btn-red" onclick="toast('Gig removed','err')">Remove</button></div></td>
+  </tr>`).join('');
+  const allRevs=GIGS.flatMap(g=>g.reviews.map(r=>({...r,gig:g.title})));
+  document.getElementById('adminReviewTable').innerHTML=allRevs.length?allRevs.map(r=>`<tr>
+    <td>${r.name}</td>
+    <td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.gig}</td>
+    <td style="color:var(--gold)">${'★'.repeat(r.stars)}</td>
+    <td style="font-size:12px;max-width:180px">${r.text.substring(0,60)}...</td>
+    <td style="font-size:11px">${r.date}</td>
+    <td><div style="display:flex;gap:5px"><button class="btn btn-solid btn-sm" onclick="toast('Review approved','ok')">✓</button><button class="btn btn-sm btn-red" onclick="toast('Review removed','err')">✗</button></div></td>
+  </tr>`):'<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:16px">No reviews yet</td></tr>';
+}
+function switchAdmin(p){
+  ['aOver','aUsers','aGigs','aOrders','aReviews','aPayments','aSettings'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+  const el=document.getElementById('a'+p.charAt(0).toUpperCase()+p.slice(1));
+  if(el)el.style.display='block';
+  document.querySelectorAll('.admin-sb-nav li a').forEach(a=>a.classList.remove('act'));
+}
+
+// ===== PAYMENT =====
+function openPayModal(){
+  if(!loggedIn){showPage('login');return;}
+  if(!curGig)return;
+  document.getElementById('payInfo').innerHTML=`<strong>${curGig.title}</strong><br><span style="color:var(--green);font-weight:700;font-size:1.1rem">ETB ${curGig.price.toLocaleString()}</span>`;
+  document.getElementById('payModal').style.display='flex';
+}
+function selPay(el,m){selPay2=m;document.querySelectorAll('.pm').forEach(p=>p.classList.remove('sel'));el.classList.add('sel');}
+function confirmPay(){
+  const ph=document.getElementById('payPhone').value;
+  if(!ph){toast(lang==='am'?'ስልክ ቁጥርዎን ያስፍሩ':'Please enter your phone number','err');return;}
+  closeModal('payModal');
+  toast(lang==='am'?`ትዕዛዝ ተቀምጧል! ${selPay2} ክፍያ ተፈጽሟል ✓`:`Order placed! Payment via ${selPay2} ✓`,'ok');
+  setTimeout(()=>toast(lang==='am'?'ሻጩ ተነግሯል! ቶሎ ያደርስዎታል 🎉':'Seller notified! Delivery expected soon 🎉','ok'),2000);
+}
+function closeModal(id){document.getElementById(id).style.display='none';}
+
+// ===== MESSAGES =====
+function renderMsgs(){
+  document.getElementById('msgThreads').innerHTML=MSGS.map((m,i)=>`<div class="msg-prev ${i===activeMsg2?'act':''}" onclick="openThread(${i})"><div class="av" style="width:34px;height:34px;flex-shrink:0">${m.ini}</div><div class="msg-info"><div class="msg-name">${m.name}<span style="font-size:10px;color:var(--gray)">${m.time}</span></div><div class="msg-snip">${m.snip}</div></div></div>`).join('');
+  renderChat();
+}
+function openThread(i){activeMsg2=i;chatMsgsArr=[...MSGS[i].msgs];document.getElementById('chatNm').textContent=MSGS[i].name;document.getElementById('chatAv').textContent=MSGS[i].ini;renderChat();renderMsgs();}
+function renderChat(){document.getElementById('chatMsgs').innerHTML=chatMsgsArr.map(m=>`<div class="bubble ${m.from==='me'?'sent':'recv'}">${m.text}</div>`).join('');const c=document.getElementById('chatMsgs');c.scrollTop=c.scrollHeight;}
+function sendMsg(){const el=document.getElementById('msgIn');const t=el.value.trim();if(!t)return;chatMsgsArr.push({from:'me',text:t});el.value='';renderChat();setTimeout(()=>{chatMsgsArr.push({from:'them',text:lang==='am'?'መልዕክቱን ተቀብያለሁ። ብዙ ሳይቆይ እመልስለታለሁ።':'Message received! I\'ll get back to you shortly.'});renderChat();},1000);}
+
+// ===== POST GIG =====
+async function publishGig() {
+  const t = document.getElementById('pTitle').value;
+  const p = document.getElementById('pPrice').value;
+  const d = document.getElementById('pDesc').value;
+  const c = document.getElementById('pCat').value;
+  const del = document.getElementById('pDel').value;
+
+  if (!t || !p || !d) {
+    toast(lang === 'am' ? 'እባክዎ ሁሉንም ያሟሉ' : 'Please fill all required fields', 'err');
+    return;
+  }
+
+  const newGigData = {
+    title: t,
+    price: p,
+    description: d,
+    category: c,
+    deliveryTime: del,
+    sellerName: "Abebe Kebede" 
+  };
+
+  try {
+    const response = await fetch('http://localhost:5001/api/gigs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newGigData)
+    });
+
+    if (response.ok) {
+      toast(lang === 'am' ? 'ጊጉ ታትሟል! 🎉' : 'Gig published successfully! 🎉', 'ok');
+      showPage('dashboard');
+      renderGigs(); 
+    }
+  } catch (err) {
+    toast('Server Error: Could not save gig', 'err');
+  }
+}
+
+// ===== TOAST =====
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast show'+(type?' '+type:'');
+  setTimeout(()=>el.className='toast',3000);
+}
+
+// ===== INIT =====
+function init(){
+  showPage('landing');
+  renderGigs();
+}
+init();
+
+</script>
+</body>
+</html>

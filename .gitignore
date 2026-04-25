@@ -1,0 +1,16 @@
+node_modules/
+.env
+uploads/avatars/*
+uploads/covers/*
+uploads/kyc/*
+uploads/chat/*
+uploads/deliveries/*
+uploads/videos/*
+!uploads/avatars/.gitkeep
+!uploads/covers/.gitkeep
+!uploads/kyc/.gitkeep
+!uploads/chat/.gitkeep
+!uploads/deliveries/.gitkeep
+!uploads/videos/.gitkeep
+*.log
+.DS_Store
