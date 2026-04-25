@@ -71,12 +71,14 @@ function updateNav() {
         }
         apiFetch(`/kyc/status/${user.id}`).then(status => {
             const badge = document.getElementById('navVerifiedBadge');
-            if (badge && (status.is_verified || status.kyc_status === 'approved')) {
+            // Only show ✓ Verified badge for KYC-approved users, not just email-verified
+            if (badge && status.kyc_status === 'approved') {
                 badge.classList.remove('hidden');
             }
             const verifyLink = document.getElementById('navVerifyLink');
             if (verifyLink) {
-                if (status.is_verified || status.kyc_status === 'approved' || status.kyc_status === 'pending') {
+                // Hide verify link if KYC approved or pending review
+                if (status.kyc_status === 'approved' || status.kyc_status === 'pending') {
                     verifyLink.classList.add('hidden');
                 } else {
                     verifyLink.classList.remove('hidden');
@@ -227,7 +229,7 @@ function renderFreelancerCard(f) {
                 </div>
             </div>
             <div class="fc-badges">
-                ${f.is_verified ? '<span class="badge badge-verified">✓ Verified</span>' : ''}
+                ${f.kyc_status === 'approved' ? '<span class="badge badge-verified">✓ Verified</span>' : ''}
                 <span class="badge badge-${level}">${level.charAt(0).toUpperCase() + level.slice(1)}</span>
             </div>
             <div class="fc-rating">⭐ ${parseFloat(f.avg_rating || 0).toFixed(1)} · ${f.completion_rate || 0}% completion</div>

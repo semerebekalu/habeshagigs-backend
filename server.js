@@ -262,6 +262,34 @@ setImmediate(async () => {
         await addColumnIfMissing('jobs', 'looking_for_team', 'TINYINT(1) DEFAULT 0');
         await addColumnIfMissing('jobs', 'team_size', 'INT DEFAULT 1');
 
+        // Proposal columns
+        await addColumnIfMissing('proposals', 'edit_count', 'INT DEFAULT 0');
+        await addColumnIfMissing('proposals', 'contract_id', 'INT NULL');
+        await addColumnIfMissing('proposals', 'proposal_text', 'TEXT NULL');
+
+        // Contract signature columns
+        await addColumnIfMissing('contracts', 'client_signed', 'TINYINT(1) DEFAULT 0');
+        await addColumnIfMissing('contracts', 'freelancer_signed', 'TINYINT(1) DEFAULT 0');
+        await addColumnIfMissing('contracts', 'client_signed_at', 'DATETIME NULL');
+        await addColumnIfMissing('contracts', 'freelancer_signed_at', 'DATETIME NULL');
+        await addColumnIfMissing('contracts', 'client_signature', 'TEXT NULL');
+        await addColumnIfMissing('contracts', 'freelancer_signature', 'TEXT NULL');
+        await addColumnIfMissing('contracts', 'terms', 'TEXT NULL');
+        await addColumnIfMissing('contracts', 'group_chat_id', 'INT NULL');
+
+        // Freelancer profile columns
+        await addColumnIfMissing('freelancer_profiles', 'cover_photo_url', 'VARCHAR(500) NULL');
+        await addColumnIfMissing('freelancer_profiles', 'video_intro_url', 'VARCHAR(500) NULL');
+        await addColumnIfMissing('freelancer_profiles', 'reputation_level', "VARCHAR(20) DEFAULT 'bronze'");
+        await addColumnIfMissing('freelancer_profiles', 'reputation_score', 'DECIMAL(5,2) DEFAULT 0');
+        await addColumnIfMissing('freelancer_profiles', 'total_completed', 'INT DEFAULT 0');
+        await addColumnIfMissing('freelancer_profiles', 'avg_rating', 'DECIMAL(3,2) DEFAULT 0');
+
+        // Users extra columns
+        await addColumnIfMissing('users', 'username', 'VARCHAR(50) NULL');
+        await addColumnIfMissing('users', 'fraud_score', 'INT DEFAULT 0');
+        await addColumnIfMissing('users', 'last_fraud_check', 'DATETIME NULL');
+
         console.log('✅ Startup schema checks complete');
     } catch (e) {
         console.error('❌ Startup schema error:', e.message);
