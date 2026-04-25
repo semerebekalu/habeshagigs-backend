@@ -259,6 +259,8 @@ setImmediate(async () => {
         await addColumnIfMissing('users', 'referred_by', 'INT NULL');
         await addColumnIfMissing('jobs', 'is_promoted', 'TINYINT(1) DEFAULT 0');
         await addColumnIfMissing('jobs', 'promoted_until', 'DATETIME NULL');
+        await addColumnIfMissing('jobs', 'looking_for_team', 'TINYINT(1) DEFAULT 0');
+        await addColumnIfMissing('jobs', 'team_size', 'INT DEFAULT 1');
 
         console.log('✅ Startup schema checks complete');
     } catch (e) {
