@@ -427,8 +427,8 @@ async function unsuspendUser(id) {
 }
 
 async function deleteUser(id, name) {
-  if (!confirm(`⚠️ DELETE ACCOUNT\n\nAre you sure you want to permanently delete the account for "${name}"?\n\nThis will:\n• Anonymize all personal data\n• Block the account permanently\n• Send a deletion email\n• Preserve transaction history\n\nThis cannot be undone.`)) return;
-  if (!confirm(`Final confirmation: Delete "${name}"?`)) return;
+  if (!confirm(`⚠️ DELETE ACCOUNT\n\nAre you sure you want to delete the account for "${name}"?\n\nThis will:\n• Remove their email, phone, and personal data\n• Wipe their profile info\n• Preserve transaction history for records\n• Allow them to re-register with the same email\n\nThis cannot be undone.`)) return;
+  if (!confirm(`Final confirmation: Delete data for "${name}"?`)) return;
   try {
     await apiFetch(`/admin/users/${id}`, { method: 'DELETE' });
     toast(`Account for ${name} has been deleted`, 'success');

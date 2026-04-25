@@ -125,7 +125,8 @@ router.delete('/users/:id', async (req, res) => {
         if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
         if (user.role === 'admin') return res.status(403).json({ error: 'FORBIDDEN', message: 'Cannot delete admin accounts' });
 
-        // Soft delete: anonymize the account rather than hard delete to preserve transaction history
+        // Soft delete: anonymize personal data, preserve transaction history
+        // Does NOT ban — they can re-register with the same email
         const anonymizedEmail = `deleted_${req.params.id}_${Date.now()}@deleted.ethiogigs`;
         await db.query(
             `UPDATE users SET
@@ -134,16 +135,23 @@ router.delete('/users/:id', async (req, res) => {
                 phone = NULL,
                 password_hash = '',
                 google_id = NULL,
-                is_banned = 1,
-                is_suspended = 1,
-                suspension_reason = 'Account deleted by admin',
                 otp_code = NULL,
                 otp_expires = NULL,
                 reset_token = NULL,
-                reset_token_expires = NULL
+                reset_token_expires = NULL,
+                referral_code = NULL
              WHERE id = ?`,
             [anonymizedEmail, req.params.id]
         );
+
+        // Also wipe freelancer profile personal data if exists
+        await db.query(
+            `UPDATE freelancer_profiles SET
+                title = NULL, bio = NULL, bio_am = NULL,
+                profile_photo_url = NULL, cover_photo_url = NULL, video_intro_url = NULL
+             WHERE id = ?`,
+            [req.params.id]
+        ).catch(() => {});
 
         // Send deletion email before anonymizing
         sendEmail({
