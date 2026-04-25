@@ -100,7 +100,8 @@
     "wrappy": "^1.0.2"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "node src/scripts/migrate.js && node server.js",
+    "dev": "node server.js",
     "migrate": "node src/scripts/migrate.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
     "setup": "node src/scripts/migrate.js && node src/scripts/seedAdmin.js"
