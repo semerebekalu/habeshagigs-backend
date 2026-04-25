@@ -208,30 +208,52 @@ io.on('connection', (socket) => {
 });
 
 // ── Auto-run pending migrations on startup ───────────────
-(async () => {
+// Run async without blocking server start
+setImmediate(async () => {
+    // Wait 3s for DB pool to be ready
+    await new Promise(r => setTimeout(r, 3000));
     try {
         const { db: dbConn } = require('./src/config/db');
-        const safeAlters = [
-            "ALTER TABLE transactions MODIFY COLUMN type ENUM('escrow_fund','milestone_release','full_release','withdrawal','refund','fee','topup') NOT NULL",
-            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS gateway_ref VARCHAR(255) NULL",
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code VARCHAR(10) NULL",
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires DATETIME NULL",
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(100) NULL",
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires DATETIME NULL"
-        ];
-        for (const sql of safeAlters) {
+
+        // For older MySQL that doesn't support IF NOT EXISTS in ALTER TABLE,
+        // we check if the column exists first, then add it if missing
+        async function addColumnIfMissing(table, column, definition) {
             try {
-                await dbConn.query(sql);
-                console.log(`✅ Schema: ${sql.substring(0, 60)}`);
+                const [rows] = await dbConn.query(
+                    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+                    [table, column]
+                );
+                if (rows.length === 0) {
+                    await dbConn.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+                    console.log(`✅ Added column: ${table}.${column}`);
+                } else {
+                    console.log(`✔  Column exists: ${table}.${column}`);
+                }
             } catch (e) {
-                console.error(`⚠️  Schema alter failed: ${e.message} | SQL: ${sql.substring(0, 60)}`);
+                console.error(`⚠️  Failed to add ${table}.${column}: ${e.message}`);
             }
         }
+
+        // Fix transactions type enum
+        try {
+            await dbConn.query("ALTER TABLE transactions MODIFY COLUMN type ENUM('escrow_fund','milestone_release','full_release','withdrawal','refund','fee','topup') NOT NULL");
+            console.log('✅ transactions.type enum updated');
+        } catch (e) {
+            console.log('✔  transactions.type already up to date');
+        }
+
+        await addColumnIfMissing('transactions', 'gateway_ref', 'VARCHAR(255) NULL');
+        await addColumnIfMissing('users', 'otp_code', 'VARCHAR(10) NULL');
+        await addColumnIfMissing('users', 'otp_expires', 'DATETIME NULL');
+        await addColumnIfMissing('users', 'reset_token', 'VARCHAR(100) NULL');
+        await addColumnIfMissing('users', 'reset_token_expires', 'DATETIME NULL');
+
         console.log('✅ Startup schema checks complete');
     } catch (e) {
         console.error('❌ Startup schema error:', e.message);
     }
-})();
+});
 
 // ── Cron jobs ────────────────────────────────────────────────
 const { startNoProposalCron } = require('./src/modules/jobs/noProposalCron');
