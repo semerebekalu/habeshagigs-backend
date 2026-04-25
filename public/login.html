@@ -5,41 +5,212 @@
   <title>Login — Ethio Gigs</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .otp-inputs { display:flex; gap:10px; justify-content:center; margin:20px 0; }
+    .otp-input { width:52px; height:56px; text-align:center; font-size:1.5rem; font-weight:800; border:2px solid var(--border); border-radius:10px; outline:none; }
+    .otp-input:focus { border-color:var(--teal); }
+  </style>
 </head>
 <body>
 <nav class="navbar"><div class="nav-container"><a href="/" class="logo">Ethio<span>Gigs</span></a><div class="nav-actions"><button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button></div></div></nav>
+
 <div class="form-page">
-  <div class="form-card">
+  <!-- Login form -->
+  <div class="form-card" id="loginStep">
     <h2>Welcome back</h2>
     <p>Sign in to your Ethio Gigs account</p>
-    <div id="formError" class="form-error hidden"></div>
+    <div id="formError" class="form-error hidden" style="background:#fee2e2;padding:10px 14px;border-radius:8px;margin-bottom:12px;"></div>
     <div class="form-group"><label>Email</label><input type="email" id="email" placeholder="you@example.com" /></div>
-    <div class="form-group"><label>Password</label><input type="password" id="password" placeholder="••••••••" /></div>
-    <button class="btn btn-primary btn-full" onclick="doLogin()">Sign In</button>
+    <div class="form-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <label style="margin:0;">Password</label>
+        <a href="#" onclick="showForgot();return false;" style="font-size:.82rem;color:var(--teal);font-weight:600;">Forgot password?</a>
+      </div>
+      <input type="password" id="password" placeholder="••••••••" />
+    </div>
+    <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()">Sign In</button>
     <div class="form-divider">Don't have an account? <a href="/register.html" style="color:var(--teal);font-weight:600;">Register</a></div>
   </div>
+
+  <!-- OTP verification (for unverified accounts) -->
+  <div class="form-card hidden" id="otpStep">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:3rem;margin-bottom:8px;">📧</div>
+      <h2 style="margin-bottom:4px;">Verify your account</h2>
+      <p style="color:var(--muted);">Enter the 6-digit code sent to <strong id="otpEmailDisplay"></strong></p>
+    </div>
+    <div id="otpError" class="form-error hidden" style="background:#fee2e2;padding:10px 14px;border-radius:8px;margin-bottom:12px;"></div>
+    <div class="otp-inputs">
+      <input class="otp-input" id="otp0" maxlength="1" oninput="otpNext(this,1)" onkeydown="otpBack(event,this,null)" />
+      <input class="otp-input" id="otp1" maxlength="1" oninput="otpNext(this,2)" onkeydown="otpBack(event,this,0)" />
+      <input class="otp-input" id="otp2" maxlength="1" oninput="otpNext(this,3)" onkeydown="otpBack(event,this,1)" />
+      <input class="otp-input" id="otp3" maxlength="1" oninput="otpNext(this,4)" onkeydown="otpBack(event,this,2)" />
+      <input class="otp-input" id="otp4" maxlength="1" oninput="otpNext(this,5)" onkeydown="otpBack(event,this,3)" />
+      <input class="otp-input" id="otp5" maxlength="1" oninput="otpNext(this,null)" onkeydown="otpBack(event,this,4)" />
+    </div>
+    <button class="btn btn-primary btn-full" id="verifyBtn" onclick="doVerifyOTP()">Verify & Continue</button>
+    <div style="text-align:center;margin-top:14px;">
+      <button onclick="resendOTP()" style="background:none;border:none;color:var(--teal);font-weight:600;cursor:pointer;font-size:.88rem;" id="resendBtn">Resend code</button>
+      <span id="resendTimer" style="color:var(--muted);font-size:.82rem;"></span>
+    </div>
+  </div>
+
+  <!-- Forgot password -->
+  <div class="form-card hidden" id="forgotStep">
+    <div style="text-align:center;margin-bottom:16px;"><div style="font-size:2.5rem;">🔑</div></div>
+    <h2>Reset password</h2>
+    <p>Enter your email and we'll send you a reset link.</p>
+    <div id="forgotError" class="form-error hidden" style="background:#fee2e2;padding:10px 14px;border-radius:8px;margin-bottom:12px;"></div>
+    <div id="forgotSuccess" class="hidden" style="background:#dcfce7;color:#15803d;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-weight:600;"></div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="forgotEmail" placeholder="you@example.com" /></div>
+    <button class="btn btn-primary btn-full" id="forgotBtn" onclick="doForgot()">Send Reset Link</button>
+    <div class="form-divider"><a href="#" onclick="showLogin();return false;" style="color:var(--teal);">← Back to Login</a></div>
+  </div>
 </div>
+
 <script src="js/app.js"></script>
 <script src="js/i18n.js"></script>
 <script>
+let loginEmail = '';
+let resendCountdown = null;
+
 async function doLogin() {
-  const email = document.getElementById('email').value;
+  const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   const errEl = document.getElementById('formError');
   errEl.classList.add('hidden');
+
+  if (!email || !password) { errEl.textContent = 'Email and password are required.'; errEl.classList.remove('hidden'); return; }
+
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = 'Signing in...';
+  btn.disabled = true;
+
   try {
     const data = await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
     setAuth(data.token, data.user);
+
+    // If account not verified, show OTP step
+    if (data.needs_verification) {
+      loginEmail = email;
+      document.getElementById('loginStep').classList.add('hidden');
+      document.getElementById('otpStep').classList.remove('hidden');
+      document.getElementById('otpEmailDisplay').textContent = email;
+      document.getElementById('otp0').focus();
+      // Resend OTP
+      await apiFetch('/auth/resend-otp', { method: 'POST', body: JSON.stringify({ email }) }).catch(() => {});
+      startResendTimer();
+      return;
+    }
+
     const user = data.user;
     if (user.role === 'admin') window.location.href = '/admin.html';
-    else if (user.active_role === 'freelancer') window.location.href = '/dashboard.html';
     else window.location.href = '/dashboard.html';
   } catch (err) {
-    errEl.textContent = err.message || 'Login failed. Check your credentials.';
+    const msg = {
+      INVALID_CREDENTIALS: 'Invalid email or password.',
+      ACCOUNT_BANNED: 'Your account has been suspended. Contact support.',
+      ACCOUNT_LOCKED: 'Account locked for 15 minutes due to too many failed attempts.'
+    }[err.error] || err.message || 'Login failed.';
+    errEl.textContent = msg;
     errEl.classList.remove('hidden');
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
   }
 }
-document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+async function doVerifyOTP() {
+  const otp = [0,1,2,3,4,5].map(i => document.getElementById(`otp${i}`).value).join('');
+  const errEl = document.getElementById('otpError');
+  errEl.classList.add('hidden');
+  if (otp.length !== 6) { errEl.textContent = 'Enter the full 6-digit code.'; errEl.classList.remove('hidden'); return; }
+
+  const btn = document.getElementById('verifyBtn');
+  btn.textContent = 'Verifying...';
+  btn.disabled = true;
+
+  try {
+    await apiFetch('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email: loginEmail, otp }) });
+    toast('✅ Verified! Redirecting...', 'success');
+    const user = getUser();
+    setTimeout(() => window.location.href = user?.role === 'admin' ? '/admin.html' : '/dashboard.html', 1200);
+  } catch (err) {
+    errEl.textContent = err.message || 'Invalid code.';
+    errEl.classList.remove('hidden');
+    btn.textContent = 'Verify & Continue';
+    btn.disabled = false;
+  }
+}
+
+async function resendOTP() {
+  try {
+    await apiFetch('/auth/resend-otp', { method: 'POST', body: JSON.stringify({ email: loginEmail }) });
+    toast('New code sent!', 'success');
+    startResendTimer();
+  } catch { toast('Failed to resend.', 'error'); }
+}
+
+async function doForgot() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const errEl = document.getElementById('forgotError');
+  const successEl = document.getElementById('forgotSuccess');
+  errEl.classList.add('hidden');
+  successEl.classList.add('hidden');
+  if (!email) { errEl.textContent = 'Please enter your email.'; errEl.classList.remove('hidden'); return; }
+
+  const btn = document.getElementById('forgotBtn');
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+
+  try {
+    await apiFetch('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+    successEl.textContent = '✅ Reset link sent! Check your email inbox.';
+    successEl.classList.remove('hidden');
+  } catch (err) {
+    errEl.textContent = err.message || 'Failed to send reset link.';
+    errEl.classList.remove('hidden');
+  }
+  btn.textContent = 'Send Reset Link';
+  btn.disabled = false;
+}
+
+function showForgot() {
+  document.getElementById('loginStep').classList.add('hidden');
+  document.getElementById('forgotStep').classList.remove('hidden');
+  document.getElementById('forgotEmail').value = document.getElementById('email').value;
+}
+
+function showLogin() {
+  document.getElementById('forgotStep').classList.add('hidden');
+  document.getElementById('loginStep').classList.remove('hidden');
+}
+
+function startResendTimer() {
+  let secs = 60;
+  const btn = document.getElementById('resendBtn');
+  const timer = document.getElementById('resendTimer');
+  btn.disabled = true; btn.style.opacity = '0.4';
+  clearInterval(resendCountdown);
+  resendCountdown = setInterval(() => {
+    timer.textContent = ` (${secs}s)`;
+    secs--;
+    if (secs < 0) { clearInterval(resendCountdown); btn.disabled = false; btn.style.opacity = '1'; timer.textContent = ''; }
+  }, 1000);
+}
+
+function otpNext(el, nextIdx) {
+  if (el.value && nextIdx !== null) document.getElementById(`otp${nextIdx}`)?.focus();
+  if (nextIdx === null) {
+    const otp = [0,1,2,3,4,5].map(i => document.getElementById(`otp${i}`).value).join('');
+    if (otp.length === 6) doVerifyOTP();
+  }
+}
+
+function otpBack(e, el, prevIdx) {
+  if (e.key === 'Backspace' && !el.value && prevIdx !== null) document.getElementById(`otp${prevIdx}`)?.focus();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && !document.getElementById('loginStep').classList.contains('hidden')) doLogin(); });
 </script>
 </body>
 </html>
