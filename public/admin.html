@@ -104,6 +104,37 @@
       </div>
     </div>
 
+    <!-- Suspend Modal -->
+    <div id="suspendModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:var(--card);border-radius:var(--radius);padding:28px;width:100%;max-width:460px;box-shadow:var(--shadow-lg);">
+        <h3 style="margin-bottom:4px;">⚠️ Suspend User</h3>
+        <p style="color:var(--muted);font-size:.88rem;margin-bottom:20px;">The user will be blocked from logging in and will receive an email notification.</p>
+        <input type="hidden" id="suspendUserId" />
+        <div class="form-group">
+          <label>Reason for Suspension <span style="color:#dc2626;">*</span></label>
+          <textarea id="suspendReason" rows="3" placeholder="e.g. Repeated policy violations, fraudulent activity, spam..." style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;resize:none;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Duration</label>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(1)">1 Day</button>
+            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(3)">3 Days</button>
+            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(7)">7 Days</button>
+            <button type="button" class="dur-btn btn btn-sm btn-outline" onclick="setDuration(30)">30 Days</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="number" id="suspendDays" placeholder="Custom days (leave empty = indefinite)" min="1" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;" />
+            <button type="button" class="btn btn-sm btn-outline" onclick="setDuration(null)">Indefinite</button>
+          </div>
+          <div id="suspendUntilPreview" style="font-size:.8rem;color:var(--muted);margin-top:6px;"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button class="btn btn-danger" onclick="confirmSuspend()">⚠️ Suspend Account</button>
+          <button class="btn btn-outline" onclick="closeSuspendModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <!-- KYC -->
     <div id="tab-kyc" class="hidden">
       <h2 class="dashboard-title">KYC Review Queue</h2>
@@ -307,39 +338,101 @@ async function loadUsers() {
     const users = await apiFetch(`/admin/users?search=${encodeURIComponent(search)}`);
     document.getElementById('usersTable').innerHTML = users.map(u => `
       <tr>
-        <td>${u.full_name}</td><td>${u.email}</td>
+        <td><strong>${u.full_name}</strong><br/><small style="color:var(--muted);">#${u.id}</small></td>
+        <td>${u.email}</td>
         <td><span class="badge badge-${u.role === 'admin' ? 'gold' : u.role === 'freelancer' ? 'teal' : 'silver'}">${u.role}</span></td>
         <td><span class="status status-${u.kyc_status === 'approved' ? 'completed' : u.kyc_status === 'pending' ? 'pending' : 'open'}">${u.kyc_status}</span></td>
-        <td>${u.is_banned ? '<span class="status status-cancelled">Banned</span>' : u.is_suspended ? '<span class="status status-disputed">Suspended</span>' : '<span class="status status-active">Active</span>'}</td>
+        <td>
+          ${u.is_banned ? '<span class="status status-cancelled">Banned</span>' :
+            u.is_suspended ? `<span class="status status-disputed">Suspended${u.suspended_until ? '<br/><small>until '+new Date(u.suspended_until).toLocaleDateString()+'</small>' : ''}</span>` :
+            '<span class="status status-active">Active</span>'}
+        </td>
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
-          ${!u.is_suspended && !u.is_banned ? `<button class="btn btn-sm btn-outline" onclick="suspendUser(${u.id})">Suspend</button>` : ''}
-          ${u.is_suspended ? `<button class="btn btn-sm btn-teal" onclick="unsuspendUser(${u.id})">Unsuspend</button>` : ''}
-          ${!u.is_banned ? `<button class="btn btn-sm btn-danger" onclick="banUser(${u.id})">Ban</button>` : ''}
-          ${u.is_banned ? `<button class="btn btn-sm btn-outline" onclick="unbanUser(${u.id})">Unban</button>` : ''}
+          ${!u.is_suspended && !u.is_banned && u.role !== 'admin' ? `<button class="btn btn-sm btn-outline" onclick="openSuspendModal(${u.id})">⏸ Suspend</button>` : ''}
+          ${u.is_suspended ? `<button class="btn btn-sm btn-teal" onclick="unsuspendUser(${u.id})">▶ Unsuspend</button>` : ''}
+          ${!u.is_banned && u.role !== 'admin' ? `<button class="btn btn-sm btn-danger" onclick="banUser(${u.id})">🚫 Ban</button>` : ''}
+          ${u.is_banned ? `<button class="btn btn-sm btn-outline" onclick="unbanUser(${u.id})">✅ Unban</button>` : ''}
+          ${u.role !== 'admin' ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="deleteUser(${u.id},'${u.full_name.replace(/'/g,"\\'")}')">🗑 Delete</button>` : ''}
         </td>
       </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;">No users found.</td></tr>';
   } catch {}
 }
 
-async function suspendUser(id) {
-  if (!confirm('Suspend this user? They will not be able to log in.')) return;
+function openSuspendModal(userId) {
+  document.getElementById('suspendUserId').value = userId;
+  document.getElementById('suspendReason').value = '';
+  document.getElementById('suspendDays').value = '';
+  document.getElementById('suspendUntilPreview').textContent = 'Indefinite suspension (no end date)';
+  document.getElementById('suspendModal').style.display = 'flex';
+}
+
+function closeSuspendModal() {
+  document.getElementById('suspendModal').style.display = 'none';
+}
+
+function setDuration(days) {
+  const input = document.getElementById('suspendDays');
+  const preview = document.getElementById('suspendUntilPreview');
+  if (days === null) {
+    input.value = '';
+    preview.textContent = 'Indefinite suspension (no end date)';
+  } else {
+    input.value = days;
+    const until = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    preview.textContent = `Account reactivates on: ${until.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+  }
+  // Highlight selected button
+  document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('btn-primary'));
+  if (days !== null) event?.target?.classList.add('btn-primary');
+}
+
+document.getElementById('suspendDays')?.addEventListener('input', function() {
+  const days = parseInt(this.value);
+  const preview = document.getElementById('suspendUntilPreview');
+  if (days > 0) {
+    const until = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    preview.textContent = `Account reactivates on: ${until.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+  } else {
+    preview.textContent = 'Indefinite suspension (no end date)';
+  }
+});
+
+async function confirmSuspend() {
+  const userId = document.getElementById('suspendUserId').value;
+  const reason = document.getElementById('suspendReason').value.trim();
+  const days = document.getElementById('suspendDays').value;
+  if (!reason) { toast('Please enter a reason for suspension', 'error'); return; }
   try {
-    await apiFetch(`/admin/users/${id}/suspend`, { method: 'PUT' });
-    toast('User suspended', 'success');
+    const res = await apiFetch(`/admin/users/${userId}/suspend`, {
+      method: 'PUT',
+      body: JSON.stringify({ reason, duration_days: days ? parseInt(days) : null })
+    });
+    const untilText = res.suspended_until
+      ? ` until ${new Date(res.suspended_until).toLocaleDateString()}`
+      : ' indefinitely';
+    toast(`User suspended${untilText}. Email sent.`, 'success');
+    closeSuspendModal();
     loadUsers();
   } catch (err) { toast(err.message || 'Failed to suspend user', 'error'); }
 }
 
 async function unsuspendUser(id) {
+  if (!confirm('Lift suspension for this user? They will receive an email and can log in again.')) return;
   try {
     await apiFetch(`/admin/users/${id}/unsuspend`, { method: 'PUT' });
-    toast('User unsuspended — they can now log in again', 'success');
+    toast('✅ User unsuspended — email sent', 'success');
     loadUsers();
-  } catch (err) {
-    const msg = err.message || err.error || JSON.stringify(err);
-    toast(`Failed to unsuspend: ${msg}`, 'error');
-    console.error('unsuspend error:', err);
-  }
+  } catch (err) { toast(err.message || 'Failed to unsuspend user', 'error'); }
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`⚠️ DELETE ACCOUNT\n\nAre you sure you want to permanently delete the account for "${name}"?\n\nThis will:\n• Anonymize all personal data\n• Block the account permanently\n• Send a deletion email\n• Preserve transaction history\n\nThis cannot be undone.`)) return;
+  if (!confirm(`Final confirmation: Delete "${name}"?`)) return;
+  try {
+    await apiFetch(`/admin/users/${id}`, { method: 'DELETE' });
+    toast(`Account for ${name} has been deleted`, 'success');
+    loadUsers();
+  } catch (err) { toast(err.message || 'Failed to delete account', 'error'); }
 }
 
 async function banUser(id) {

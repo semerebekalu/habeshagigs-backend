@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require('../config/db');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { enqueueNotification } = require('../modules/notification/notificationService');
+const { sendEmail } = require('../utils/emailService');
 
 router.use(authenticate, requireAdmin);
 
@@ -38,21 +39,130 @@ router.get('/users', async (req, res) => {
 
 // PUT /api/admin/users/:id/suspend
 router.put('/users/:id/suspend', async (req, res) => {
+    const { reason, duration_days } = req.body; // duration_days: null = permanent suspension
     try {
-        const [[user]] = await db.query('SELECT id FROM users WHERE id = ?', [req.params.id]);
+        const [[user]] = await db.query('SELECT id, full_name, email FROM users WHERE id = ?', [req.params.id]);
         if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
-        await db.query('UPDATE users SET is_suspended = 1 WHERE id = ?', [req.params.id]);
-        res.json({ success: true });
+
+        const suspendedUntil = duration_days
+            ? new Date(Date.now() + parseInt(duration_days) * 24 * 60 * 60 * 1000)
+            : null;
+
+        await db.query(
+            'UPDATE users SET is_suspended = 1, suspension_reason = ?, suspended_until = ?, suspended_at = NOW() WHERE id = ?',
+            [reason || 'Violation of platform terms', suspendedUntil, req.params.id]
+        );
+
+        // In-app notification
+        await enqueueNotification(req.params.id, 'account_suspended', {
+            title: '⚠️ Account Suspended',
+            message: `Your account has been suspended. Reason: ${reason || 'Violation of platform terms'}.${suspendedUntil ? ` Suspension ends: ${suspendedUntil.toLocaleDateString()}.` : ' Contact support to appeal.'}`
+        }).catch(() => {});
+
+        // Email notification
+        const durationText = duration_days
+            ? `Your account will be automatically reactivated on <strong>${suspendedUntil.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>.`
+            : `This suspension is <strong>indefinite</strong>. Please contact support to appeal.`;
+
+        sendEmail({
+            to: user.email,
+            toName: user.full_name,
+            subject: '⚠️ Your Ethio Gigs account has been suspended',
+            html: `<div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
+              <h1 style="color:#1E3A8A;">Ethio<span style="color:#14B8A6;">Gigs</span></h1>
+              <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+                <h2 style="color:#dc2626;">⚠️ Account Suspended</h2>
+                <p>Hi ${user.full_name},</p>
+                <p>Your Ethio Gigs account has been <strong>suspended</strong> and you will not be able to log in during this period.</p>
+                <div style="background:#fee2e2;border-radius:8px;padding:16px;margin:16px 0;">
+                  <strong>Reason:</strong><br/>${reason || 'Violation of platform terms'}
+                </div>
+                <p>${durationText}</p>
+                <p style="color:#64748b;font-size:0.88rem;">If you believe this is a mistake, please contact our support team.</p>
+              </div>
+              <p style="color:#94a3b8;font-size:0.78rem;text-align:center;margin-top:16px;">© 2026 Ethio Gigs</p>
+            </div>`
+        }).catch(() => {});
+
+        res.json({ success: true, suspended_until: suspendedUntil });
     } catch (err) { res.status(500).json({ error: 'SERVER_ERROR', message: err.message }); }
 });
 
 // PUT /api/admin/users/:id/unsuspend
 router.put('/users/:id/unsuspend', async (req, res) => {
     try {
-        const [[user]] = await db.query('SELECT id FROM users WHERE id = ?', [req.params.id]);
+        const [[user]] = await db.query('SELECT id, full_name, email FROM users WHERE id = ?', [req.params.id]);
         if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
-        await db.query('UPDATE users SET is_suspended = 0 WHERE id = ?', [req.params.id]);
+        await db.query('UPDATE users SET is_suspended = 0, suspension_reason = NULL, suspended_until = NULL WHERE id = ?', [req.params.id]);
+
+        await enqueueNotification(req.params.id, 'account_reactivated', {
+            title: '✅ Account Reactivated',
+            message: 'Your account suspension has been lifted. You can now log in and use Ethio Gigs normally.'
+        }).catch(() => {});
+
+        sendEmail({
+            to: user.email,
+            toName: user.full_name,
+            subject: '✅ Your Ethio Gigs account has been reactivated',
+            html: `<div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
+              <h1 style="color:#1E3A8A;">Ethio<span style="color:#14B8A6;">Gigs</span></h1>
+              <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+                <h2 style="color:#16a34a;">✅ Account Reactivated</h2>
+                <p>Hi ${user.full_name}, your account has been reactivated. You can now log in normally.</p>
+                <a href="${process.env.APP_URL || 'https://habeshagigs.up.railway.app'}/login.html" style="display:inline-block;background:#1E3A8A;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;margin-top:12px;">Log In Now</a>
+              </div>
+            </div>`
+        }).catch(() => {});
+
         res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: 'SERVER_ERROR', message: err.message }); }
+});
+
+// DELETE /api/admin/users/:id — permanently delete a user account
+router.delete('/users/:id', async (req, res) => {
+    try {
+        const [[user]] = await db.query('SELECT id, full_name, email, role FROM users WHERE id = ?', [req.params.id]);
+        if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
+        if (user.role === 'admin') return res.status(403).json({ error: 'FORBIDDEN', message: 'Cannot delete admin accounts' });
+
+        // Soft delete: anonymize the account rather than hard delete to preserve transaction history
+        const anonymizedEmail = `deleted_${req.params.id}_${Date.now()}@deleted.ethiogigs`;
+        await db.query(
+            `UPDATE users SET
+                full_name = '[Deleted User]',
+                email = ?,
+                phone = NULL,
+                password_hash = '',
+                google_id = NULL,
+                is_banned = 1,
+                is_suspended = 1,
+                suspension_reason = 'Account deleted by admin',
+                otp_code = NULL,
+                otp_expires = NULL,
+                reset_token = NULL,
+                reset_token_expires = NULL
+             WHERE id = ?`,
+            [anonymizedEmail, req.params.id]
+        );
+
+        // Send deletion email before anonymizing
+        sendEmail({
+            to: user.email,
+            toName: user.full_name,
+            subject: 'Your Ethio Gigs account has been deleted',
+            html: `<div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
+              <h1 style="color:#1E3A8A;">Ethio<span style="color:#14B8A6;">Gigs</span></h1>
+              <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+                <h2 style="color:#dc2626;">Account Deleted</h2>
+                <p>Hi ${user.full_name},</p>
+                <p>Your Ethio Gigs account has been permanently deleted by our admin team. All personal data has been removed.</p>
+                <p style="color:#64748b;font-size:0.88rem;">If you believe this was a mistake, please contact support immediately.</p>
+              </div>
+            </div>`
+        }).catch(() => {});
+
+        console.log(`🗑️ Admin #${req.user.id} deleted user #${req.params.id} (${user.email})`);
+        res.json({ success: true, message: `Account for ${user.full_name} has been deleted` });
     } catch (err) { res.status(500).json({ error: 'SERVER_ERROR', message: err.message }); }
 });
 

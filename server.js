@@ -248,6 +248,9 @@ setImmediate(async () => {
         await addColumnIfMissing('users', 'otp_expires', 'DATETIME NULL');
         await addColumnIfMissing('users', 'reset_token', 'VARCHAR(100) NULL');
         await addColumnIfMissing('users', 'reset_token_expires', 'DATETIME NULL');
+        await addColumnIfMissing('users', 'suspension_reason', 'TEXT NULL');
+        await addColumnIfMissing('users', 'suspended_until', 'DATETIME NULL');
+        await addColumnIfMissing('users', 'suspended_at', 'DATETIME NULL');
 
         console.log('✅ Startup schema checks complete');
     } catch (e) {
@@ -280,7 +283,42 @@ cron.schedule('0 3 * * *', async () => {
 });
 console.log('🔄 Match score refresh scheduled (daily 3am)');
 
-// Daily fraud scan — runs at 2am
+// Auto-unsuspend users whose suspension period has expired — runs every 15 minutes
+cron.schedule('*/15 * * * *', async () => {
+    try {
+        const { db } = require('./src/config/db');
+        const [expired] = await db.query(
+            "SELECT id, full_name, email FROM users WHERE is_suspended = 1 AND suspended_until IS NOT NULL AND suspended_until <= NOW()"
+        );
+        for (const u of expired) {
+            await db.query(
+                "UPDATE users SET is_suspended = 0, suspension_reason = NULL, suspended_until = NULL WHERE id = ?",
+                [u.id]
+            );
+            // Send reactivation email
+            const { sendEmail } = require('./src/utils/emailService');
+            sendEmail({
+                to: u.email,
+                toName: u.full_name,
+                subject: '✅ Your Ethio Gigs account has been reactivated',
+                html: `<div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
+                  <h1 style="color:#1E3A8A;">Ethio<span style="color:#14B8A6;">Gigs</span></h1>
+                  <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+                    <h2 style="color:#16a34a;">✅ Account Reactivated</h2>
+                    <p>Hi ${u.full_name},</p>
+                    <p>Your account suspension period has ended and your account is now fully active. You can log in and use Ethio Gigs normally.</p>
+                    <a href="${process.env.APP_URL || 'https://habeshagigs.up.railway.app'}/login.html" style="display:inline-block;background:#1E3A8A;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;margin-top:12px;">Log In Now</a>
+                  </div>
+                </div>`
+            }).catch(() => {});
+            console.log(`✅ Auto-unsuspended user #${u.id} (${u.email})`);
+        }
+        if (expired.length > 0) console.log(`🔄 Auto-unsuspend: ${expired.length} user(s) reactivated`);
+    } catch (err) {
+        console.error('❌ Auto-unsuspend cron error:', err.message);
+    }
+});
+console.log('🔄 Auto-unsuspend cron scheduled (every 15 minutes)');
 cron.schedule('0 2 * * *', async () => {    try {
         const { db } = require('./src/config/db');
         const { analyzeUser } = require('./src/modules/fraud/fraudDetector');

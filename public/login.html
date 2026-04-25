@@ -109,10 +109,14 @@ async function doLogin() {
   } catch (err) {
     const msg = {
       INVALID_CREDENTIALS: 'Invalid email or password.',
-      ACCOUNT_BANNED: 'Your account has been suspended. Contact support.',
-      ACCOUNT_LOCKED: 'Account locked for 15 minutes due to too many failed attempts.'
-    }[err.error] || err.message || 'Login failed.';
+      ACCOUNT_BANNED: '🚫 Your account has been permanently banned. Contact support.',
+      ACCOUNT_LOCKED: '🔒 Account locked for 15 minutes due to too many failed attempts.'
+    }[err.error] || (err.error === 'ACCOUNT_SUSPENDED'
+      ? `⚠️ ${err.message || 'Your account is suspended. Contact support to appeal.'}`
+      : err.message || 'Login failed.');
     errEl.textContent = msg;
+    errEl.style.background = err.error === 'ACCOUNT_SUSPENDED' ? '#fef9c3' : '#fee2e2';
+    errEl.style.color = err.error === 'ACCOUNT_SUSPENDED' ? '#854d0e' : '';
     errEl.classList.remove('hidden');
     btn.textContent = 'Sign In';
     btn.disabled = false;

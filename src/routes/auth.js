@@ -139,7 +139,25 @@ router.post('/login', async (req, res) => {
     try {
         const [[user]] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
         if (!user) return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'Invalid email or password' });
-        if (user.is_banned) return res.status(403).json({ error: 'ACCOUNT_BANNED', message: 'Your account has been suspended. Contact support.' });
+        if (user.is_banned) return res.status(403).json({ error: 'ACCOUNT_BANNED', message: 'Your account has been permanently suspended. Contact support.' });
+
+        // Check suspension — also auto-lift if duration has expired
+        if (user.is_suspended) {
+            if (user.suspended_until && new Date(user.suspended_until) <= new Date()) {
+                // Auto-lift expired suspension
+                await db.query('UPDATE users SET is_suspended = 0, suspension_reason = NULL, suspended_until = NULL WHERE id = ?', [user.id]);
+            } else {
+                const untilText = user.suspended_until
+                    ? ` until ${new Date(user.suspended_until).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+                    : '';
+                const reason = user.suspension_reason ? ` Reason: ${user.suspension_reason}.` : '';
+                return res.status(403).json({
+                    error: 'ACCOUNT_SUSPENDED',
+                    message: `Your account is suspended${untilText}.${reason} Contact support to appeal.`,
+                    suspended_until: user.suspended_until
+                });
+            }
+        }
         if (user.locked_until && new Date(user.locked_until) > new Date()) {
             return res.status(423).json({ error: 'ACCOUNT_LOCKED', message: 'Account locked for 15 minutes due to too many failed attempts.', unlockAt: user.locked_until });
         }
