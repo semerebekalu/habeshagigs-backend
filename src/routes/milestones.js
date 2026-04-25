@@ -38,17 +38,29 @@ router.get('/contract/:contractId', authenticate, async (req, res) => {
     res.json(milestones);
 });
 
-// PUT /api/milestones/:id/approve — client approves milestone
+// PUT /api/milestones/:id/approve — client approves milestone and auto-releases payment
 router.put('/:id/approve', authenticate, async (req, res) => {
     const [[ms]] = await db.query('SELECT * FROM milestones WHERE id = ?', [req.params.id]);
     if (!ms) return res.status(404).json({ error: 'NOT_FOUND' });
-    await db.query("UPDATE milestones SET status = 'approved' WHERE id = ?", [req.params.id]);
+
     const [[contract]] = await db.query('SELECT * FROM contracts WHERE id = ?', [ms.contract_id]);
+    if (!contract) return res.status(404).json({ error: 'CONTRACT_NOT_FOUND' });
+
+    // Only client can approve
+    if (req.user.id !== contract.client_id) {
+        return res.status(403).json({ error: 'FORBIDDEN', message: 'Only the client can approve milestones' });
+    }
+
+    if (ms.status === 'released') return res.status(400).json({ error: 'ALREADY_RELEASED' });
+
+    await db.query("UPDATE milestones SET status = 'approved' WHERE id = ?", [req.params.id]);
+
     await enqueueNotification(contract.freelancer_id, 'milestone_approved', {
         title: '✅ Milestone Approved',
-        message: `Milestone "${ms.title}" has been approved. You can now request payment.`
+        message: `Milestone "${ms.title}" has been approved. Payment will be released shortly.`
     });
-    res.json({ success: true });
+
+    res.json({ success: true, message: 'Milestone approved. Use /api/escrow/release-milestone to release payment.' });
 });
 
 // PUT /api/milestones/:id/submit — freelancer submits milestone

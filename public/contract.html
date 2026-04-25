@@ -572,20 +572,36 @@ async function approveDelivery(deliveryId) {
 }
 
 async function releaseMilestone(msId) {
+  // Find milestone amount from contractData
+  const ms = contractData?.milestones?.find(m => m.id === msId);
+  const gross = parseFloat(ms?.amount || 0);
+  const fee = parseFloat((gross * 0.10).toFixed(2));
+  const net = parseFloat((gross - fee).toFixed(2));
+
+  if (!confirm(`Release payment for "${ms?.title}"?\n\nGross: ${gross.toFixed(2)} ETB\nPlatform fee (10%): ${fee.toFixed(2)} ETB\nFreelancer receives: ${net.toFixed(2)} ETB`)) return;
+
   try {
-    await apiFetch('/payments/release-milestone', { method: 'POST', body: JSON.stringify({ milestone_id: msId }) });
-    toast('Payment released!', 'success');
+    const res = await apiFetch('/payments/release-milestone', { method: 'POST', body: JSON.stringify({ milestone_id: msId }) });
+    const msg = res.contract_completed
+      ? `🎉 Payment released! Contract completed. Freelancer received ${res.net?.toFixed(2)} ETB.`
+      : `💰 Payment released! Freelancer received ${res.net?.toFixed(2)} ETB (${res.fee?.toFixed(2)} ETB platform fee).`;
+    toast(msg, 'success');
     loadContract();
-  } catch (err) { toast(err.error || 'Failed', 'error'); }
+  } catch (err) { toast(err.message || err.error || 'Failed', 'error'); }
 }
 
 async function releaseAll() {
-  if (!confirm('Release all remaining escrow funds to the freelancer?')) return;
+  const escrow = parseFloat(contractData?.contract?.escrow_balance || 0);
+  const fee = parseFloat((escrow * 0.10).toFixed(2));
+  const net = parseFloat((escrow - fee).toFixed(2));
+
+  if (!confirm(`Release all remaining escrow funds?\n\nGross: ${escrow.toFixed(2)} ETB\nPlatform fee (10%): ${fee.toFixed(2)} ETB\nFreelancer receives: ${net.toFixed(2)} ETB`)) return;
+
   try {
-    await apiFetch('/payments/release-full', { method: 'POST', body: JSON.stringify({ contract_id: parseInt(contractId) }) });
-    toast('All funds released!', 'success');
+    const res = await apiFetch('/payments/release-full', { method: 'POST', body: JSON.stringify({ contract_id: parseInt(contractId) }) });
+    toast(`✅ All funds released! Freelancer received ${res.net?.toFixed(2)} ETB.`, 'success');
     loadContract();
-  } catch (err) { toast(err.error || 'Failed', 'error'); }
+  } catch (err) { toast(err.error || err.message || 'Failed', 'error'); }
 }
 
 async function fundEscrow() {

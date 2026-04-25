@@ -42,21 +42,76 @@ router.post('/release-milestone', authenticate, async (req, res) => {
     try {
         const [[ms]] = await db.query('SELECT * FROM milestones WHERE id = ?', [milestone_id]);
         if (!ms) return res.status(404).json({ error: 'MILESTONE_NOT_FOUND' });
-        if (ms.status !== 'approved') return res.status(400).json({ error: 'MILESTONE_NOT_APPROVED' });
+        if (ms.status === 'released') return res.status(400).json({ error: 'MILESTONE_ALREADY_RELEASED' });
+        if (ms.status !== 'approved' && ms.status !== 'submitted') {
+            return res.status(400).json({ error: 'MILESTONE_NOT_APPROVED', message: 'Milestone must be approved before releasing payment' });
+        }
 
         const [[contract]] = await db.query('SELECT * FROM contracts WHERE id = ?', [ms.contract_id]);
+        if (!contract) return res.status(404).json({ error: 'CONTRACT_NOT_FOUND' });
+
+        // Only the client can release milestone payment
+        if (req.user.id !== contract.client_id) {
+            return res.status(403).json({ error: 'FORBIDDEN', message: 'Only the client can release milestone payments' });
+        }
+
         if (contract.escrow_status === 'frozen') return res.status(403).json({ error: 'ESCROW_FROZEN_DISPUTE' });
 
-        await db.query('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [ms.amount, contract.freelancer_id]);
-        await db.query('UPDATE contracts SET escrow_balance = escrow_balance - ? WHERE id = ?', [ms.amount, contract.id]);
-        await db.query('UPDATE milestones SET status = "released", released_at = NOW() WHERE id = ?', [milestone_id]);
-        await db.query('INSERT INTO transactions (contract_id, user_id, type, amount, method, status) VALUES (?, ?, "milestone_release", ?, "wallet", "completed")', [contract.id, contract.freelancer_id, ms.amount]);
+        const gross = parseFloat(ms.amount);
+        if (parseFloat(contract.escrow_balance) < gross) {
+            return res.status(400).json({ error: 'INSUFFICIENT_ESCROW', message: 'Not enough escrow balance for this milestone' });
+        }
+
+        // Deduct platform commission (10%)
+        const { fee, net } = calculateFee(gross);
+
+        await db.query('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [net, contract.freelancer_id]);
+        await db.query('UPDATE contracts SET escrow_balance = escrow_balance - ?, platform_fee = platform_fee + ? WHERE id = ?', [gross, fee, contract.id]);
+        await db.query("UPDATE milestones SET status = 'released', released_at = NOW() WHERE id = ?", [milestone_id]);
+        await db.query(
+            'INSERT INTO transactions (contract_id, user_id, type, amount, method, status) VALUES (?, ?, "milestone_release", ?, "wallet", "completed")',
+            [contract.id, contract.freelancer_id, net]
+        );
+
+        // Check if all milestones are now released — auto-complete contract
+        const [[{ total, released }]] = await db.query(
+            `SELECT COUNT(*) as total, SUM(status = 'released') as released FROM milestones WHERE contract_id = ?`,
+            [contract.id]
+        );
+        let contractCompleted = false;
+        if (total > 0 && parseInt(released) === parseInt(total)) {
+            await db.query(
+                "UPDATE contracts SET escrow_status = 'released', status = 'completed', completed_at = NOW() WHERE id = ?",
+                [contract.id]
+            );
+            await db.query('UPDATE freelancer_profiles SET total_completed = total_completed + 1 WHERE id = ?', [contract.freelancer_id]);
+            const { recalculate } = require('../modules/reputation/reputationEngine');
+            setImmediate(() => recalculate(contract.freelancer_id).catch(() => {}));
+            contractCompleted = true;
+
+            await enqueueNotification(contract.freelancer_id, 'contract_completed', {
+                title: '🎉 Contract Completed!',
+                message: `All milestones released. Contract #${contract.id} is now complete.`
+            }).catch(() => {});
+            await enqueueNotification(contract.client_id, 'contract_completed', {
+                title: '🎉 Contract Completed!',
+                message: `All milestones have been paid. Contract #${contract.id} is now complete.`
+            }).catch(() => {});
+        }
 
         await enqueueNotification(contract.freelancer_id, 'payment_released', {
-            title: '💰 Payment Released',
-            message: `Milestone payment of ${ms.amount} ETB has been released to your wallet`
+            title: '💰 Milestone Payment Released',
+            message: `${net.toFixed(2)} ETB released for milestone "${ms.title}" (${fee.toFixed(2)} ETB platform fee deducted)`
+        }).catch(() => {});
+
+        res.json({
+            success: true,
+            gross,
+            fee,
+            net,
+            contract_completed: contractCompleted,
+            message: `${net.toFixed(2)} ETB released to freelancer (${fee.toFixed(2)} ETB platform fee)`
         });
-        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
     }
@@ -69,22 +124,40 @@ router.post('/release-full', authenticate, async (req, res) => {
         const [[contract]] = await db.query('SELECT * FROM contracts WHERE id = ? AND client_id = ?', [contract_id, req.user.id]);
         if (!contract) return res.status(404).json({ error: 'CONTRACT_NOT_FOUND' });
         if (contract.escrow_status === 'frozen') return res.status(403).json({ error: 'ESCROW_FROZEN_DISPUTE' });
+        if (contract.status === 'completed') return res.status(400).json({ error: 'CONTRACT_ALREADY_COMPLETED' });
 
-        const amount = parseFloat(contract.escrow_balance);
-        await db.query('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [amount, contract.freelancer_id]);
-        await db.query('UPDATE contracts SET escrow_balance = 0, escrow_status = "released", status = "completed", completed_at = NOW() WHERE id = ?', [contract_id]);
-        await db.query('INSERT INTO transactions (contract_id, user_id, type, amount, method, status) VALUES (?, ?, "full_release", ?, "wallet", "completed")', [contract_id, contract.freelancer_id, amount]);
+        const gross = parseFloat(contract.escrow_balance);
+        if (gross <= 0) return res.status(400).json({ error: 'NO_ESCROW_BALANCE', message: 'No escrow balance to release' });
 
-        // Update freelancer completed jobs count and recalculate reputation (Requirement 9.2)
+        // Deduct platform commission (10%)
+        const { fee, net } = calculateFee(gross);
+
+        await db.query('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [net, contract.freelancer_id]);
+        await db.query(
+            'UPDATE contracts SET escrow_balance = 0, escrow_status = "released", status = "completed", completed_at = NOW(), platform_fee = platform_fee + ? WHERE id = ?',
+            [fee, contract_id]
+        );
+        await db.query(
+            'INSERT INTO transactions (contract_id, user_id, type, amount, method, status) VALUES (?, ?, "full_release", ?, "wallet", "completed")',
+            [contract_id, contract.freelancer_id, net]
+        );
+
+        // Mark any remaining milestones as released
+        await db.query("UPDATE milestones SET status = 'released', released_at = NOW() WHERE contract_id = ? AND status != 'released'", [contract_id]);
+
         await db.query('UPDATE freelancer_profiles SET total_completed = total_completed + 1 WHERE id = ?', [contract.freelancer_id]);
         setImmediate(() => recalculateReputation(contract.freelancer_id).catch(() => {}));
 
         await enqueueNotification(contract.freelancer_id, 'payment_released', {
             title: '💰 Full Payment Released',
-            message: `Contract completed! Full payment of ${amount.toFixed(2)} ETB has been released to your wallet.`
+            message: `Contract completed! ${net.toFixed(2)} ETB released to your wallet (${fee.toFixed(2)} ETB platform fee deducted).`
+        }).catch(() => {});
+        await enqueueNotification(contract.client_id, 'contract_completed', {
+            title: '✅ Contract Completed',
+            message: `You released full payment of ${net.toFixed(2)} ETB. Contract is now complete.`
         }).catch(() => {});
 
-        res.json({ success: true });
+        res.json({ success: true, gross, fee, net, message: `${net.toFixed(2)} ETB released to freelancer` });
     } catch (err) {
         res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
     }
