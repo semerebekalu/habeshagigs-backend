@@ -214,4 +214,57 @@ router.post('/:id/sign', authenticate, requireKYC, async (req, res) => {
     }
 });
 
+// POST /api/contracts/:id/cancel — cancel a contract (client only, only if no work submitted)
+router.post('/:id/cancel', authenticate, async (req, res) => {
+    const { reason } = req.body;
+    try {
+        const [[contract]] = await db.query('SELECT * FROM contracts WHERE id = ?', [req.params.id]);
+        if (!contract) return res.status(404).json({ error: 'NOT_FOUND' });
+        if (req.user.id !== contract.client_id) {
+            return res.status(403).json({ error: 'FORBIDDEN', message: 'Only the client can cancel a contract' });
+        }
+        if (contract.status !== 'active') {
+            return res.status(400).json({ error: 'CANNOT_CANCEL', message: `Contract is already ${contract.status}` });
+        }
+
+        // Check no milestones have been submitted or released
+        const [[{ submitted }]] = await db.query(
+            "SELECT COUNT(*) as submitted FROM milestones WHERE contract_id = ? AND status IN ('submitted','approved','released')",
+            [req.params.id]
+        );
+        if (parseInt(submitted) > 0) {
+            return res.status(400).json({
+                error: 'WORK_IN_PROGRESS',
+                message: 'Cannot cancel — work has already been submitted. Raise a dispute instead.'
+            });
+        }
+
+        // Refund escrow to client
+        const escrow = parseFloat(contract.escrow_balance || 0);
+        if (escrow > 0) {
+            await db.query('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [escrow, contract.client_id]);
+            await db.query(
+                "INSERT INTO transactions (contract_id, user_id, type, amount, method, status) VALUES (?, ?, 'refund', ?, 'wallet', 'completed')",
+                [contract.id, contract.client_id, escrow]
+            );
+        }
+
+        await db.query(
+            "UPDATE contracts SET status = 'cancelled', escrow_balance = 0, escrow_status = 'refunded' WHERE id = ?",
+            [req.params.id]
+        );
+        await db.query("UPDATE jobs SET status = 'open' WHERE id = ?", [contract.job_id]);
+
+        const { enqueueNotification } = require('../modules/notification/notificationService');
+        await enqueueNotification(contract.freelancer_id, 'contract_cancelled', {
+            title: '❌ Contract Cancelled',
+            message: `The client cancelled contract #${contract.id}. Reason: ${reason || 'Not specified'}.${escrow > 0 ? '' : ''}`
+        }).catch(() => {});
+
+        res.json({ success: true, refunded: escrow });
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
 module.exports = router;

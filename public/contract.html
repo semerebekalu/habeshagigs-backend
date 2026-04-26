@@ -101,6 +101,77 @@
   </div>
 </div>
 
+<!-- Dispute Modal -->
+<div class="modal-overlay hidden" id="disputeModal">
+  <div class="modal-box" style="max-width:540px;">
+    <h3 style="margin-bottom:4px;">⚖️ Raise a Dispute</h3>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:20px;">Escrow funds will be frozen until our team resolves the dispute. Provide as much detail and evidence as possible.</p>
+    <div class="form-group">
+      <label>Reason <span style="color:#dc2626;">*</span></label>
+      <textarea id="disputeReason" rows="4" placeholder="Describe the issue clearly — what was agreed, what went wrong, and what outcome you expect. Minimum 20 characters." style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;resize:none;"></textarea>
+      <div id="disputeReasonCount" style="font-size:.75rem;color:var(--muted);margin-top:4px;">0 / 20 minimum</div>
+    </div>
+    <div class="form-group">
+      <label>Evidence Files <span style="color:var(--muted);font-weight:400;">(optional — up to 5 files, screenshots, documents, videos)</span></label>
+      <div style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--bg);" onclick="document.getElementById('disputeFiles').click()">
+        <div style="font-size:1.5rem;margin-bottom:4px;">📎</div>
+        <div style="font-weight:600;font-size:.88rem;">Click to attach evidence</div>
+        <div style="color:var(--muted);font-size:.78rem;margin-top:2px;">Images, PDF, documents, video, zip · Max 20MB each</div>
+        <input type="file" id="disputeFiles" multiple accept="image/*,.pdf,.doc,.docx,.mp4,.mov,.zip" style="display:none;" onchange="showDisputeFiles(this)" />
+      </div>
+      <div id="disputeFileList" style="margin-top:8px;"></div>
+    </div>
+    <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.82rem;color:#854d0e;">
+      ⚠️ Once raised, escrow funds are frozen and neither party can release them until an admin resolves the dispute.
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-danger" onclick="submitDispute()">⚖️ Raise Dispute</button>
+      <button class="btn btn-outline" onclick="document.getElementById('disputeModal').classList.add('hidden')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal-overlay hidden" id="reviewModal">
+  <div class="modal-box" style="max-width:480px;">
+    <h3 style="margin-bottom:4px;">⭐ Leave a Review</h3>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:20px;" id="reviewModalSubtitle">Share your experience working on this contract.</p>
+    <div class="form-group">
+      <label>Rating</label>
+      <div style="display:flex;gap:8px;margin-top:6px;" id="starRating">
+        ${[1,2,3,4,5].map(n => `<span onclick="setRating(${n})" style="font-size:2rem;cursor:pointer;transition:.1s;" data-star="${n}">☆</span>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Comment <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+      <textarea id="reviewComment" rows="3" placeholder="Describe your experience..." style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;resize:none;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="submitReview()">Submit Review</button>
+      <button class="btn btn-outline" onclick="document.getElementById('reviewModal').classList.add('hidden')">Skip</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Contract Modal -->
+<div class="modal-overlay hidden" id="cancelModal">
+  <div class="modal-box" style="max-width:460px;">
+    <h3 style="margin-bottom:4px;">❌ Cancel Contract</h3>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:16px;">This will cancel the contract and refund the escrow balance back to your wallet.</p>
+    <div class="form-group">
+      <label>Reason for cancellation</label>
+      <textarea id="cancelReason" rows="3" placeholder="e.g. Project requirements changed, freelancer unresponsive..." style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;resize:none;"></textarea>
+    </div>
+    <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.82rem;color:#dc2626;">
+      ⚠️ This cannot be undone. The freelancer will be notified.
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-danger" onclick="confirmCancel()">Cancel Contract</button>
+      <button class="btn btn-outline" onclick="document.getElementById('cancelModal').classList.add('hidden')">Keep Contract</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Milestone Modal -->
 <div class="modal-overlay hidden" id="milestoneModal">
   <div class="modal-box">
@@ -346,8 +417,9 @@ async function loadContract() {
       <!-- ACTIONS -->
       <div style="display:flex;gap:10px;flex-wrap:wrap;padding-bottom:40px;">
         <a href="/api/invoices/${contractId}?token=${getToken()}" target="_blank" class="btn btn-outline btn-sm">📄 Download Invoice</a>
-        ${contract.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="raiseDispute()">⚖️ Raise Dispute</button>` : ''}
+        ${contract.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="openDisputeModal()">⚖️ Raise Dispute</button>` : ''}
         ${isClient && contract.status === 'active' ? `<button class="btn btn-teal btn-sm" onclick="releaseAll()">💸 Release All Funds</button>` : ''}
+        ${contract.status === 'active' && contract.escrow_status !== 'funded' ? `<button class="btn btn-outline btn-sm" onclick="openCancelModal()">❌ Cancel Contract</button>` : ''}
       </div>`;
 
     // Init signature canvas after render
@@ -812,6 +884,15 @@ async function releaseMilestone(msId) {
       : `💰 Payment released! Freelancer received ${res.net?.toFixed(2)} ETB (${res.fee?.toFixed(2)} ETB platform fee).`;
     toast(msg, 'success');
     loadContract();
+    // Prompt for review if contract just completed
+    if (res.contract_completed) {
+      const contract = contractData?.contract;
+      const targetId = user.id === contract?.client_id ? contract?.freelancer_id : contract?.client_id;
+      const targetName = user.id === contract?.client_id
+        ? (contractData && contractData.freelancerName) || 'the freelancer'
+        : (contractData && contractData.clientName) || 'the client';
+      setTimeout(() => openReviewModal(targetId, targetName), 1500);
+    }
   } catch (err) { toast(err.message || err.error || 'Failed', 'error'); }
 }
 
@@ -840,14 +921,116 @@ async function fundEscrow() {
   } catch (err) { toast(err.error || err.message || 'Failed to fund escrow', 'error'); }
 }
 
-async function raiseDispute() {
-  const reason = prompt('Describe the issue (minimum 20 characters):');
-  if (!reason || reason.length < 20) { toast('Please provide a detailed reason', 'error'); return; }
+// ── Dispute ────────────────────────────────────────────────
+function openDisputeModal() {
+  document.getElementById('disputeReason').value = '';
+  document.getElementById('disputeFileList').innerHTML = '';
+  document.getElementById('disputeReasonCount').textContent = '0 / 20 minimum';
+  document.getElementById('disputeModal').classList.remove('hidden');
+  document.getElementById('disputeReason').oninput = function() {
+    const len = this.value.length;
+    const el = document.getElementById('disputeReasonCount');
+    el.textContent = `${len} / 20 minimum`;
+    el.style.color = len >= 20 ? '#16a34a' : 'var(--muted)';
+  };
+}
+
+function showDisputeFiles(input) {
+  const list = document.getElementById('disputeFileList');
+  list.innerHTML = Array.from(input.files).map(f =>
+    `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg);border-radius:6px;margin-bottom:4px;font-size:.82rem;">
+      <span>📎</span><span style="flex:1;">${f.name}</span>
+      <span style="color:var(--muted);">${(f.size/1024/1024).toFixed(1)} MB</span>
+    </div>`
+  ).join('');
+}
+
+async function submitDispute() {
+  const reason = document.getElementById('disputeReason').value.trim();
+  if (reason.length < 20) { toast('Please provide a detailed reason (min 20 characters)', 'error'); return; }
+
+  const files = document.getElementById('disputeFiles').files;
+  const formData = new FormData();
+  formData.append('contract_id', contractId);
+  formData.append('reason', reason);
+  for (const f of files) formData.append('evidence', f);
+
   try {
-    await apiFetch('/disputes', { method: 'POST', body: JSON.stringify({ contract_id: parseInt(contractId), reason }) });
-    toast('Dispute raised. Escrow frozen pending review.', 'success');
+    const res = await fetch(`${window.location.origin}/api/disputes`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw data;
+    toast(`Dispute raised${data.evidence_count > 0 ? ` with ${data.evidence_count} evidence file(s)` : ''}. Escrow frozen.`, 'success');
+    document.getElementById('disputeModal').classList.add('hidden');
     loadContract();
-  } catch (err) { toast(err.error || 'Failed', 'error'); }
+  } catch (err) { toast(err.message || err.error || 'Failed to raise dispute', 'error'); }
+}
+
+// ── Review ─────────────────────────────────────────────────
+let reviewRating = 0;
+let revieweeId = null;
+
+function openReviewModal(targetId, targetName) {
+  reviewRating = 0;
+  revieweeId = targetId;
+  document.getElementById('reviewComment').value = '';
+  document.getElementById('reviewModalSubtitle').textContent = `How was your experience working with ${targetName}?`;
+  document.querySelectorAll('#starRating span').forEach(s => s.textContent = '☆');
+  document.getElementById('reviewModal').classList.remove('hidden');
+}
+
+function setRating(n) {
+  reviewRating = n;
+  document.querySelectorAll('#starRating span').forEach(s => {
+    s.textContent = parseInt(s.dataset.star) <= n ? '⭐' : '☆';
+  });
+}
+
+async function submitReview() {
+  if (!reviewRating) { toast('Please select a star rating', 'error'); return; }
+  try {
+    await apiFetch('/reviews', {
+      method: 'POST',
+      body: JSON.stringify({
+        contract_id: parseInt(contractId),
+        reviewee_id: revieweeId,
+        rating: reviewRating,
+        comment: document.getElementById('reviewComment').value.trim() || null
+      })
+    });
+    toast('⭐ Review submitted!', 'success');
+    document.getElementById('reviewModal').classList.add('hidden');
+  } catch (err) {
+    if (err.error === 'REVIEW_ALREADY_SUBMITTED') {
+      toast('You already reviewed this contract', 'error');
+      document.getElementById('reviewModal').classList.add('hidden');
+    } else {
+      toast(err.message || 'Failed to submit review', 'error');
+    }
+  }
+}
+
+// ── Cancel Contract ────────────────────────────────────────
+function openCancelModal() {
+  document.getElementById('cancelReason').value = '';
+  document.getElementById('cancelModal').classList.remove('hidden');
+}
+
+async function confirmCancel() {
+  const reason = document.getElementById('cancelReason').value.trim();
+  try {
+    await apiFetch(`/contracts/${contractId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || 'Cancelled by user' })
+    });
+    toast('Contract cancelled. Escrow refunded to your wallet.', 'success');
+    document.getElementById('cancelModal').classList.add('hidden');
+    setTimeout(() => window.location.href = '/dashboard.html', 1500);
+  } catch (err) { toast(err.message || 'Failed to cancel', 'error'); }
+}
 }
 
 loadContract();
