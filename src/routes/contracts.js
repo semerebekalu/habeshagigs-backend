@@ -48,10 +48,7 @@ router.post('/create-from-proposal', authenticate, async (req, res) => {
 router.get('/:contractId/progress', authenticate, async (req, res) => {
     try {
         const [[contract]] = await db.query(
-            `SELECT id, status, total_amount, escrow_balance, escrow_status, client_id, freelancer_id,
-                    client_signed, freelancer_signed, client_signed_at, freelancer_signed_at,
-                    client_signature, freelancer_signature, terms
-             FROM contracts WHERE id = ?`,
+            'SELECT * FROM contracts WHERE id = ?',
             [req.params.contractId]
         );
         if (!contract) return res.status(404).json({ error: 'NOT_FOUND' });
