@@ -221,7 +221,7 @@ async function loadStatus() {
     const form = document.getElementById('kycForm');
 
     banner.className = 'status-banner';
-    if (status.kyc_status === 'approved' || status.is_verified) {
+    if (status.kyc_status === 'approved') {
       banner.classList.add('status-approved');
       icon.textContent = '✅';
       text.textContent = 'Your account is verified! Your profile shows the verified badge.';

@@ -298,7 +298,7 @@ router.put('/moderation/message/:id', async (req, res) => {
 
 // ── Withdrawal approval endpoints ──────────────────────────
 
-// GET /api/admin/withdrawals — pending withdrawal requests
+// GET /api/admin/withdrawals — pending withdrawal requests (excludes user-cancelled)
 router.get('/withdrawals', async (req, res) => {
     try {
         const [withdrawals] = await db.query(
@@ -306,7 +306,9 @@ router.get('/withdrawals', async (req, res) => {
                     u.full_name, u.email, u.role
              FROM transactions t
              JOIN users u ON t.user_id = u.id
-             WHERE t.type = 'withdrawal' AND t.status = 'pending'
+             WHERE t.type = 'withdrawal'
+               AND t.status = 'pending'
+               AND (t.gateway_ref IS NULL OR t.gateway_ref NOT LIKE '%Cancelled by user%')
              ORDER BY t.created_at ASC`
         );
         res.json(withdrawals);
@@ -315,7 +317,7 @@ router.get('/withdrawals', async (req, res) => {
     }
 });
 
-// GET /api/admin/withdrawals/history — all processed withdrawals
+// GET /api/admin/withdrawals/history — processed withdrawals (excludes user-cancelled ones)
 router.get('/withdrawals/history', async (req, res) => {
     try {
         const [withdrawals] = await db.query(
@@ -324,6 +326,8 @@ router.get('/withdrawals/history', async (req, res) => {
              FROM transactions t
              JOIN users u ON t.user_id = u.id
              WHERE t.type = 'withdrawal'
+               AND t.status IN ('completed', 'pending')
+               AND (t.gateway_ref IS NULL OR t.gateway_ref NOT LIKE '%Cancelled by user%')
              ORDER BY t.created_at DESC LIMIT 100`
         );
         res.json(withdrawals);
