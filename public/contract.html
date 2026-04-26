@@ -101,6 +101,24 @@
   </div>
 </div>
 
+<!-- Add Milestone Modal -->
+<div class="modal-overlay hidden" id="milestoneModal">
+  <div class="modal-box">
+    <h3 style="margin-bottom:4px;">📋 Add Milestone</h3>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:16px;">Break the project into milestones. The total should equal the contract value.</p>
+    <div class="form-group"><label>Milestone Title <span style="color:#dc2626;">*</span></label><input type="text" id="msTitle" placeholder="e.g. Design mockups, Backend API, Final delivery..." /></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group"><label>Amount (ETB) <span style="color:#dc2626;">*</span></label><input type="number" id="msAmount" placeholder="0" min="1" /></div>
+      <div class="form-group"><label>Due Date (optional)</label><input type="date" id="msDueDate" /></div>
+    </div>
+    <div id="msBudgetHint" style="font-size:.82rem;color:var(--muted);margin-bottom:12px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="saveMilestone()">Add Milestone</button>
+      <button class="btn btn-outline" onclick="document.getElementById('milestoneModal').classList.add('hidden')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Deliver Work Modal -->
 <div class="modal-overlay hidden" id="deliverModal">
   <div class="modal-box">
@@ -318,7 +336,11 @@ async function loadContract() {
           </div>
         </div>
         ${milestones.length ? milestones.map(ms => renderMilestone(ms, isClient, isFreelancer)).join('') :
-          `<div style="text-align:center;padding:24px;color:var(--muted);">No milestones yet. <a href="#" onclick="addMilestone()">Add one</a></div>`}
+          `<div style="text-align:center;padding:24px;color:var(--muted);">No milestones yet. ${isClient ? '<a href="#" onclick="addMilestone()">Add one</a>' : 'Waiting for client to add milestones.'}</div>`}
+        ${isClient && contract.status === 'active' && contract.escrow_status === 'funded' ? `
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+            <button class="btn btn-outline btn-sm" onclick="addMilestone()">+ Add Milestone</button>
+          </div>` : ''}
       </div>
 
       <!-- ACTIONS -->
@@ -712,10 +734,66 @@ async function submitRevision() {
 async function approveDelivery(deliveryId) {
   if (!deliveryId) { toast('No delivery found', 'error'); return; }
   try {
+    // Approve the delivery
     await apiFetch(`/deliveries/${deliveryId}/approve`, { method: 'PUT' });
-    toast('Delivery approved!', 'success');
+    toast('Delivery approved! You can now release the milestone payment.', 'success');
     loadContract();
-  } catch (err) { toast(err.message || 'Failed', 'error'); }
+  } catch (err) {
+    // Fallback: approve via milestone if delivery endpoint fails
+    const ms = contractData?.milestones?.find(m => m.delivery?.id === deliveryId);
+    if (ms) {
+      try {
+        await apiFetch(`/milestones/${ms.id}/approve`, { method: 'PUT' });
+        toast('Milestone approved! You can now release payment.', 'success');
+        loadContract();
+      } catch (e) { toast(e.message || 'Failed', 'error'); }
+    } else {
+      toast(err.message || 'Failed', 'error');
+    }
+  }
+}
+
+function addMilestone() {
+  const contract = contractData?.contract;
+  if (!contract) return;
+
+  // Calculate remaining budget
+  const totalMs = contractData?.milestones?.reduce((s, m) => s + parseFloat(m.amount || 0), 0) || 0;
+  const remaining = parseFloat(contract.total_amount || 0) - totalMs;
+
+  document.getElementById('msTitle').value = '';
+  document.getElementById('msAmount').value = remaining > 0 ? remaining.toFixed(2) : '';
+  document.getElementById('msDueDate').value = '';
+  document.getElementById('msBudgetHint').textContent =
+    `Contract total: ${parseFloat(contract.total_amount).toFixed(2)} ETB · Already allocated: ${totalMs.toFixed(2)} ETB · Remaining: ${remaining.toFixed(2)} ETB`;
+  document.getElementById('milestoneModal').classList.remove('hidden');
+}
+
+async function saveMilestone() {
+  const title = document.getElementById('msTitle').value.trim();
+  const amount = parseFloat(document.getElementById('msAmount').value);
+  const due_date = document.getElementById('msDueDate').value || null;
+
+  if (!title) { toast('Milestone title is required', 'error'); return; }
+  if (!amount || amount <= 0) { toast('Amount must be greater than 0', 'error'); return; }
+
+  // Warn if over budget
+  const totalMs = contractData?.milestones?.reduce((s, m) => s + parseFloat(m.amount || 0), 0) || 0;
+  const contractTotal = parseFloat(contractData?.contract?.total_amount || 0);
+  if (totalMs + amount > contractTotal * 1.01) { // 1% tolerance
+    toast(`Total milestones (${(totalMs + amount).toFixed(2)} ETB) would exceed contract value (${contractTotal.toFixed(2)} ETB)`, 'error');
+    return;
+  }
+
+  try {
+    await apiFetch('/milestones', {
+      method: 'POST',
+      body: JSON.stringify({ contract_id: parseInt(contractId), title, amount, due_date })
+    });
+    toast('Milestone added!', 'success');
+    document.getElementById('milestoneModal').classList.add('hidden');
+    loadContract();
+  } catch (err) { toast(err.message || 'Failed to add milestone', 'error'); }
 }
 
 async function releaseMilestone(msId) {
