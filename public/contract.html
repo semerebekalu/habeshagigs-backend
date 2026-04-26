@@ -571,7 +571,7 @@ function captureLiveSelfie() {
       liveVerifyToken = data.live_verify_token;
       statusEl.style.background = '#dcfce7';
       statusEl.style.color = '#15803d';
-      statusEl.textContent = `✅ Identity confirmed (${data.similarity}% match). Proceeding to sign...`;
+      statusEl.textContent = `✅ Face confirmed. Proceeding to sign...`;
 
       // Auto-proceed to actual signing after 1.5s
       setTimeout(() => {

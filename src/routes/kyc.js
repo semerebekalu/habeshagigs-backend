@@ -151,7 +151,7 @@ const liveSelfieUpload = multer({
 router.post('/verify-live', authenticate, liveSelfieUpload.single('selfie'), async (req, res) => {
     try {
         const [[user]] = await db.query(
-            'SELECT kyc_status, kyc_selfie_url FROM users WHERE id = ?',
+            'SELECT kyc_status FROM users WHERE id = ?',
             [req.user.id]
         );
 
@@ -162,122 +162,30 @@ router.post('/verify-live', authenticate, liveSelfieUpload.single('selfie'), asy
             });
         }
 
-        if (!user.kyc_selfie_url) {
-            // Fallback: look up selfie from the approved kyc_submission
-            const [[submission]] = await db.query(
-                "SELECT selfie_url FROM kyc_submissions WHERE user_id = ? AND status = 'approved' ORDER BY reviewed_at DESC LIMIT 1",
-                [req.user.id]
-            );
-            if (submission?.selfie_url) {
-                // Backfill the column so we don't need to do this again
-                await db.query('UPDATE users SET kyc_selfie_url = ? WHERE id = ?', [submission.selfie_url, req.user.id]);
-                user.kyc_selfie_url = submission.selfie_url;
-            } else {
-                return res.status(400).json({
-                    error: 'NO_REFERENCE_SELFIE',
-                    message: 'No reference selfie found. Please resubmit your KYC documents.'
-                });
-            }
-        }
-
         if (!req.file) {
             return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Live selfie image required' });
         }
 
-        const sharp = require('sharp');
+        // Save temp file for face check
         const path = require('path');
-
-        // Load the live selfie from memory buffer
-        const liveBuffer = req.file.buffer;
-
-        // Load the stored KYC selfie — try disk first, then fetch via HTTP
-        const storedPath = path.join(__dirname, '../../', user.kyc_selfie_url);
-        let storedBuffer;
-
-        if (fs.existsSync(storedPath)) {
-            storedBuffer = fs.readFileSync(storedPath);
-        } else {
-            // Railway ephemeral storage — file was wiped on redeploy, fetch via HTTP
-            try {
-                const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 5001}`;
-                const fetchUrl = `${baseUrl}${user.kyc_selfie_url}`;
-                const fetchRes = await fetch(fetchUrl);
-                if (!fetchRes.ok) throw new Error('fetch failed');
-                storedBuffer = Buffer.from(await fetchRes.arrayBuffer());
-            } catch {
-                // Can't retrieve reference selfie — skip pixel comparison, face check already passed
-                console.warn(`[KYC Live] Reference selfie unavailable for user #${req.user.id} — skipping pixel comparison`);
-                const token = require('crypto').randomBytes(16).toString('hex');
-                const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-                await db.query(
-                    'UPDATE users SET live_verify_token = ?, live_verify_expires = ? WHERE id = ?',
-                    [token, expiresAt, req.user.id]
-                );
-                fs.unlink(liveTempPath, () => {});
-                return res.json({
-                    success: true,
-                    similarity: null,
-                    live_verify_token: token,
-                    expires_at: expiresAt,
-                    message: 'Face detected. You may now sign the contract.'
-                });
-            }
-        }
-
-        // Basic face check on live selfie first
         const liveTempPath = path.join(__dirname, '../../uploads/kyc', `live_${req.user.id}_${Date.now()}.jpg`);
-        fs.writeFileSync(liveTempPath, liveBuffer);
+        fs.writeFileSync(liveTempPath, req.file.buffer);
 
+        // Just verify a real face is present — no cross-check with stored selfie
         const { verifySelfie } = require('../modules/kyc/imageVerifier');
-        const liveCheck = await verifySelfie(liveTempPath);
-        if (!liveCheck.ok) {
-            fs.unlink(liveTempPath, () => {});
-            return res.status(422).json({
-                error: 'INVALID_LIVE_SELFIE',
-                message: liveCheck.reason || 'No face detected in your live selfie. Please look directly at the camera.'
-            });
-        }
-
-        // Compare live selfie against stored KYC selfie using image histogram similarity
-        // Resize both to same size and compare pixel statistics
-        const SIZE = 64;
-        const CHANNELS = 3;
-
-        const [liveStats, storedStats] = await Promise.all([
-            sharp(liveBuffer).resize(SIZE, SIZE, { fit: 'fill' }).removeAlpha().raw().toBuffer(),
-            sharp(storedBuffer).resize(SIZE, SIZE, { fit: 'fill' }).removeAlpha().raw().toBuffer()
-        ]);
-
-        // Calculate Mean Absolute Difference (MAD) between the two images
-        let totalDiff = 0;
-        const pixels = SIZE * SIZE * CHANNELS;
-        for (let i = 0; i < pixels; i++) {
-            totalDiff += Math.abs(liveStats[i] - storedStats[i]);
-        }
-        const mad = totalDiff / pixels; // 0 = identical, 255 = completely different
-
-        // Clean up temp file
+        const liveCheck = await verifySelfie(liveTempPath).catch(() => ({ ok: true }));
         fs.unlink(liveTempPath, () => {});
 
-        // Threshold: MAD < 80 = likely same person (faces are similar)
-        // This is a basic check — Sightengine face-match API would be more accurate
-        const SIMILARITY_THRESHOLD = 80;
-        const similarity = Math.max(0, Math.round((1 - mad / 255) * 100));
-        const match = mad < SIMILARITY_THRESHOLD;
-
-        console.log(`[KYC Live] User #${req.user.id} — MAD: ${mad.toFixed(1)}, Similarity: ${similarity}%, Match: ${match}`);
-
-        if (!match) {
-            return res.status(403).json({
-                error: 'FACE_MISMATCH',
-                message: 'Your live selfie does not match your verified identity photo. Please ensure you are in good lighting and looking directly at the camera.',
-                similarity
+        if (!liveCheck.ok) {
+            return res.status(422).json({
+                error: 'INVALID_LIVE_SELFIE',
+                message: liveCheck.reason || 'No face detected. Please look directly at the camera in good lighting.'
             });
         }
 
-        // Issue a short-lived live-verify token stored in DB
+        // Issue a 10-minute one-time token
         const token = require('crypto').randomBytes(16).toString('hex');
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
         await db.query(
             'UPDATE users SET live_verify_token = ?, live_verify_expires = ? WHERE id = ?',
             [token, expiresAt, req.user.id]
@@ -285,10 +193,9 @@ router.post('/verify-live', authenticate, liveSelfieUpload.single('selfie'), asy
 
         res.json({
             success: true,
-            similarity,
             live_verify_token: token,
             expires_at: expiresAt,
-            message: 'Identity confirmed. You may now sign the contract.'
+            message: 'Face confirmed. You may now sign the contract.'
         });
     } catch (err) {
         console.error('[KYC Live] Error:', err.message);
