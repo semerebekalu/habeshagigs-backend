@@ -113,11 +113,40 @@ router.get('/', authenticate, async (req, res) => {
     }
 });
 
-// POST /api/contracts/:id/sign — digital signature (requires KYC)
+// POST /api/contracts/:id/sign — digital signature (requires KYC + live selfie verification)
 router.post('/:id/sign', authenticate, requireKYC, async (req, res) => {
-    const { signature } = req.body; // base64 signature image or typed name
+    const { signature, live_verify_token } = req.body;
     if (!signature) return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Signature required' });
+
+    // Require live selfie token
+    if (!live_verify_token) {
+        return res.status(403).json({
+            error: 'LIVE_VERIFY_REQUIRED',
+            message: 'You must complete a live selfie check before signing. Please take a live selfie to confirm your identity.'
+        });
+    }
+
     try {
+        // Validate the live verify token
+        const [[user]] = await db.query(
+            'SELECT live_verify_token, live_verify_expires FROM users WHERE id = ?',
+            [req.user.id]
+        );
+        if (!user?.live_verify_token || user.live_verify_token !== live_verify_token) {
+            return res.status(403).json({
+                error: 'INVALID_LIVE_TOKEN',
+                message: 'Invalid or expired live verification. Please take a new live selfie.'
+            });
+        }
+        if (new Date(user.live_verify_expires) < new Date()) {
+            return res.status(403).json({
+                error: 'LIVE_TOKEN_EXPIRED',
+                message: 'Your live verification has expired (10 minutes). Please take a new live selfie.'
+            });
+        }
+
+        // Consume the token — one-time use
+        await db.query('UPDATE users SET live_verify_token = NULL, live_verify_expires = NULL WHERE id = ?', [req.user.id]);
         const [[contract]] = await db.query('SELECT * FROM contracts WHERE id = ?', [req.params.id]);
         if (!contract) return res.status(404).json({ error: 'NOT_FOUND' });
 

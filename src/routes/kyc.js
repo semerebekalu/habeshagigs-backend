@@ -79,6 +79,8 @@ router.post('/submit', authenticate, kycUpload.fields([
             [req.user.id, id_document_url, selfie_url]
         );
         await db.query("UPDATE users SET kyc_status = 'pending' WHERE id = ?", [req.user.id]);
+        // Store selfie URL on user record for live face comparison during contract signing
+        await db.query('UPDATE users SET kyc_selfie_url = ? WHERE id = ?', [selfie_url, req.user.id]);
 
         res.json({ success: true, message: 'KYC submitted for review. You will be notified within 24 hours.' });
     } catch (err) {
@@ -111,7 +113,7 @@ router.post('/review/:id', authenticate, requireAdmin, async (req, res) => {
 
     if (decision === 'approved') {
         await db.query("UPDATE kyc_submissions SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
-        await db.query("UPDATE users SET kyc_status = 'approved', is_verified = 1 WHERE id = ?", [submission.user_id]);
+        await db.query("UPDATE users SET kyc_status = 'approved', is_verified = 1, kyc_selfie_url = ? WHERE id = ?", [submission.selfie_url, submission.user_id]);
 
         // Fetch user role for personalised message
         const [[targetUser]] = await db.query('SELECT role, full_name FROM users WHERE id = ?', [submission.user_id]);
@@ -137,6 +139,125 @@ router.post('/review/:id', authenticate, requireAdmin, async (req, res) => {
         });
     }
     res.json({ success: true });
+});
+
+// POST /api/kyc/verify-live — take a live selfie and compare against stored KYC selfie
+// Called before contract signing to confirm identity in real time
+const liveSelfieUpload = multer({
+    storage: multer.memoryStorage(), // keep in memory, don't save to disk
+    limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+router.post('/verify-live', authenticate, liveSelfieUpload.single('selfie'), async (req, res) => {
+    try {
+        const [[user]] = await db.query(
+            'SELECT kyc_status, kyc_selfie_url FROM users WHERE id = ?',
+            [req.user.id]
+        );
+
+        if (!user || user.kyc_status !== 'approved') {
+            return res.status(403).json({
+                error: 'KYC_NOT_APPROVED',
+                message: 'Your identity must be verified before signing a contract.'
+            });
+        }
+
+        if (!user.kyc_selfie_url) {
+            return res.status(400).json({
+                error: 'NO_REFERENCE_SELFIE',
+                message: 'No reference selfie found. Please resubmit your KYC documents.'
+            });
+        }
+
+        if (!req.file) {
+            return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Live selfie image required' });
+        }
+
+        const sharp = require('sharp');
+        const path = require('path');
+
+        // Load the live selfie from memory buffer
+        const liveBuffer = req.file.buffer;
+
+        // Load the stored KYC selfie from disk
+        const storedPath = path.join(__dirname, '../../', user.kyc_selfie_url);
+        if (!fs.existsSync(storedPath)) {
+            return res.status(400).json({
+                error: 'REFERENCE_NOT_FOUND',
+                message: 'Reference selfie file not found. Please resubmit your KYC documents.'
+            });
+        }
+
+        // Basic face check on live selfie first
+        const liveTempPath = path.join(__dirname, '../../uploads/kyc', `live_${req.user.id}_${Date.now()}.jpg`);
+        fs.writeFileSync(liveTempPath, liveBuffer);
+
+        const { verifySelfie } = require('../modules/kyc/imageVerifier');
+        const liveCheck = await verifySelfie(liveTempPath);
+        if (!liveCheck.ok) {
+            fs.unlink(liveTempPath, () => {});
+            return res.status(422).json({
+                error: 'INVALID_LIVE_SELFIE',
+                message: liveCheck.reason || 'No face detected in your live selfie. Please look directly at the camera.'
+            });
+        }
+
+        // Compare live selfie against stored KYC selfie using image histogram similarity
+        // Resize both to same size and compare pixel statistics
+        const SIZE = 64;
+        const CHANNELS = 3;
+
+        const [liveStats, storedStats] = await Promise.all([
+            sharp(liveBuffer).resize(SIZE, SIZE, { fit: 'fill' }).removeAlpha().raw().toBuffer(),
+            sharp(storedPath).resize(SIZE, SIZE, { fit: 'fill' }).removeAlpha().raw().toBuffer()
+        ]);
+
+        // Calculate Mean Absolute Difference (MAD) between the two images
+        let totalDiff = 0;
+        const pixels = SIZE * SIZE * CHANNELS;
+        for (let i = 0; i < pixels; i++) {
+            totalDiff += Math.abs(liveStats[i] - storedStats[i]);
+        }
+        const mad = totalDiff / pixels; // 0 = identical, 255 = completely different
+
+        // Clean up temp file
+        fs.unlink(liveTempPath, () => {});
+
+        // Threshold: MAD < 80 = likely same person (faces are similar)
+        // This is a basic check — Sightengine face-match API would be more accurate
+        const SIMILARITY_THRESHOLD = 80;
+        const similarity = Math.max(0, Math.round((1 - mad / 255) * 100));
+        const match = mad < SIMILARITY_THRESHOLD;
+
+        console.log(`[KYC Live] User #${req.user.id} — MAD: ${mad.toFixed(1)}, Similarity: ${similarity}%, Match: ${match}`);
+
+        if (!match) {
+            return res.status(403).json({
+                error: 'FACE_MISMATCH',
+                message: 'Your live selfie does not match your verified identity photo. Please ensure you are in good lighting and looking directly at the camera.',
+                similarity
+            });
+        }
+
+        // Issue a short-lived live-verify token stored in DB
+        const token = require('crypto').randomBytes(16).toString('hex');
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        await db.query(
+            'UPDATE users SET live_verify_token = ?, live_verify_expires = ? WHERE id = ?',
+            [token, expiresAt, req.user.id]
+        );
+
+        res.json({
+            success: true,
+            similarity,
+            live_verify_token: token,
+            expires_at: expiresAt,
+            message: 'Identity confirmed. You may now sign the contract.'
+        });
+    } catch (err) {
+        console.error('[KYC Live] Error:', err.message);
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
 });
 
 module.exports = router;

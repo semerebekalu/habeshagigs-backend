@@ -174,6 +174,23 @@ router.delete('/users/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: 'SERVER_ERROR', message: err.message }); }
 });
 
+// POST /api/admin/users/:id/reset-kyc — reset KYC for testing
+router.post('/users/:id/reset-kyc', async (req, res) => {
+    try {
+        await db.query(
+            "UPDATE users SET kyc_status = 'none', is_verified = 0, kyc_selfie_url = NULL, live_verify_token = NULL, live_verify_expires = NULL WHERE id = ?",
+            [req.params.id]
+        );
+        await db.query(
+            "UPDATE kyc_submissions SET status = 'rejected', rejection_reason = 'Reset by admin for testing' WHERE user_id = ?",
+            [req.params.id]
+        );
+        res.json({ success: true, message: 'KYC reset. User can resubmit.' });
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
 // PUT /api/admin/users/:id/ban
 router.put('/users/:id/ban', async (req, res) => {
     try {

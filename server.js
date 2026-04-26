@@ -257,6 +257,9 @@ setImmediate(async () => {
         await addColumnIfMissing('disputes', 'evidence_note', 'TEXT NULL');
         await addColumnIfMissing('users', 'referral_code', 'VARCHAR(20) NULL');
         await addColumnIfMissing('users', 'referred_by', 'INT NULL');
+        await addColumnIfMissing('users', 'kyc_selfie_url', 'VARCHAR(500) NULL');
+        await addColumnIfMissing('users', 'live_verify_token', 'VARCHAR(64) NULL');
+        await addColumnIfMissing('users', 'live_verify_expires', 'DATETIME NULL');
         await addColumnIfMissing('jobs', 'is_promoted', 'TINYINT(1) DEFAULT 0');
         await addColumnIfMissing('jobs', 'promoted_until', 'DATETIME NULL');
         await addColumnIfMissing('jobs', 'looking_for_team', 'TINYINT(1) DEFAULT 0');
