@@ -163,10 +163,21 @@ router.post('/verify-live', authenticate, liveSelfieUpload.single('selfie'), asy
         }
 
         if (!user.kyc_selfie_url) {
-            return res.status(400).json({
-                error: 'NO_REFERENCE_SELFIE',
-                message: 'No reference selfie found. Please resubmit your KYC documents.'
-            });
+            // Fallback: look up selfie from the approved kyc_submission
+            const [[submission]] = await db.query(
+                "SELECT selfie_url FROM kyc_submissions WHERE user_id = ? AND status = 'approved' ORDER BY reviewed_at DESC LIMIT 1",
+                [req.user.id]
+            );
+            if (submission?.selfie_url) {
+                // Backfill the column so we don't need to do this again
+                await db.query('UPDATE users SET kyc_selfie_url = ? WHERE id = ?', [submission.selfie_url, req.user.id]);
+                user.kyc_selfie_url = submission.selfie_url;
+            } else {
+                return res.status(400).json({
+                    error: 'NO_REFERENCE_SELFIE',
+                    message: 'No reference selfie found. Please resubmit your KYC documents.'
+                });
+            }
         }
 
         if (!req.file) {
