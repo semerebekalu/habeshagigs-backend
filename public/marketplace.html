@@ -201,11 +201,15 @@ function renderFreelancerCard(f) {
 
 function renderJobCard(j) {
   const timeAgo = getTimeAgo(j.created_at);
+  const isPromoted = j.is_active_promoted || (j.is_promoted && j.promoted_until && new Date(j.promoted_until) > new Date());
   return `
-    <div class="job-card" onclick="window.location='/job.html?id=${j.id}'">
+    <div class="job-card" onclick="window.location='/job.html?id=${j.id}'" style="${isPromoted ? 'border-color:var(--gold);box-shadow:0 0 0 2px rgba(245,158,11,.15);' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
         <div class="job-card-title">${j.title}</div>
-        ${j.looking_for_team ? `<span style="background:#ede9fe;color:#6d28d9;padding:3px 8px;border-radius:20px;font-size:0.75rem;font-weight:700;white-space:nowrap;">👥 Team (${j.team_size || 2})</span>` : ''}
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          ${isPromoted ? `<span style="background:#fef9c3;color:#854d0e;padding:3px 8px;border-radius:20px;font-size:0.72rem;font-weight:700;white-space:nowrap;">⭐ Sponsored</span>` : ''}
+          ${j.looking_for_team ? `<span style="background:#ede9fe;color:#6d28d9;padding:3px 8px;border-radius:20px;font-size:0.75rem;font-weight:700;white-space:nowrap;">👥 Team (${j.team_size || 2})</span>` : ''}
+        </div>
       </div>
       <div class="job-card-meta">
         <span>💰 ${j.budget_min || 0}–${j.budget_max || 0} ETB</span>

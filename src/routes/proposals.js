@@ -5,8 +5,20 @@ const { authenticate, requireKYC, requireVerified } = require('../middleware/aut
 const { rateLimiter } = require('../middleware/rateLimiter');
 const { enqueueNotification } = require('../modules/notification/notificationService');
 const { calculateFee } = require('../utils/feeCalculator');
+const { TIERS } = require('./subscriptions');
 
 const proposalLimiter = rateLimiter({ windowMs: 60 * 60_000, max: 20, message: 'Too many proposals submitted. Please wait an hour.' });
+
+// Get active subscription tier for a user
+async function getUserTier(userId) {
+    const [[sub]] = await db.query(
+        "SELECT tier, expires_at FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY expires_at DESC LIMIT 1",
+        [userId]
+    );
+    if (!sub) return 'free';
+    if (sub.expires_at && new Date(sub.expires_at) < new Date()) return 'free';
+    return sub.tier || 'free';
+}
 
 // POST /api/proposals — freelancer submits a proposal (must be email-verified)
 router.post('/', authenticate, requireVerified, proposalLimiter, async (req, res) => {
@@ -43,6 +55,29 @@ router.post('/', authenticate, requireVerified, proposalLimiter, async (req, res
                 });
             }
         }
+        // Subscription proposal limit enforcement
+        const tier = await getUserTier(req.user.id);
+        const tierConfig = TIERS[tier];
+        if (tierConfig.proposals_per_month !== -1) {
+            // Count proposals submitted this calendar month
+            const [[{ count }]] = await db.query(
+                `SELECT COUNT(*) as count FROM proposals
+                 WHERE freelancer_id = ?
+                   AND MONTH(created_at) = MONTH(NOW())
+                   AND YEAR(created_at) = YEAR(NOW())`,
+                [req.user.id]
+            );
+            if (count >= tierConfig.proposals_per_month) {
+                return res.status(403).json({
+                    error: 'PROPOSAL_LIMIT_REACHED',
+                    message: `You have used all ${tierConfig.proposals_per_month} proposals for this month on the ${tierConfig.name} plan. Upgrade to Pro (30/month) or Elite (unlimited) to submit more.`,
+                    tier,
+                    limit: tierConfig.proposals_per_month,
+                    used: count
+                });
+            }
+        }
+
         // Check if freelancer already submitted a proposal for this job
         const [[existing]] = await db.query(
             'SELECT id, edit_count, status FROM proposals WHERE job_id = ? AND freelancer_id = ?',
