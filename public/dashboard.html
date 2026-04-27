@@ -354,11 +354,10 @@
         </div>
         <div id="skillsTagList" style="margin-bottom:14px;min-height:32px;"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
-          <div class="form-group" style="margin:0;flex:1;min-width:160px;">
-            <label>Add Skill</label>
-            <select id="skillSelectInput" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;">
-              <option value="">Loading skills...</option>
-            </select>
+          <div class="form-group" style="margin:0;flex:1;min-width:160px;position:relative;">
+            <label>Search & Add Skill</label>
+            <input type="text" id="skillSearchInput" placeholder="Type to search skills..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;" oninput="searchSkills(this.value)" />
+            <div id="skillSearchResults" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;display:none;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.1);"></div>
           </div>
           <div class="form-group" style="margin:0;min-width:120px;">
             <label>Level</label>
@@ -368,8 +367,9 @@
               <option value="expert">Expert</option>
             </select>
           </div>
-          <button class="btn btn-teal btn-sm" onclick="addSkill()" style="margin-bottom:1px;">+ Add</button>
         </div>
+        <input type="hidden" id="selectedSkillId" />
+        <input type="hidden" id="selectedSkillName" />
       </div>
 
       <!-- ── Portfolio (Freelancers only) ── -->
@@ -1016,7 +1016,6 @@ async function loadProfile() {
 
     // Skills
     renderSkillTags(profile.skills || []);
-    loadSkillOptions();
 
     // Portfolio
     renderPortfolioGrid(profile.portfolio || []);
@@ -1043,23 +1042,69 @@ function renderSkillTags(skills) {
     </span>`).join('');
 }
 
-async function loadSkillOptions() {
+async function searchSkills(query) {
+  const resultsDiv = document.getElementById('skillSearchResults');
+  if (!query || query.length < 2) {
+    resultsDiv.style.display = 'none';
+    return;
+  }
+  
   try {
-    const skills = await apiFetch('/skills');
-    const sel = document.getElementById('skillSelectInput');
-    if (!sel) return;
-    if (!skills || !skills.length) { sel.innerHTML = '<option value="">No skills available</option>'; return; }
-    sel.innerHTML = '<option value="">Select a skill...</option>' + skills.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-  } catch {}
+    const skills = await apiFetch(`/skills/search?q=${encodeURIComponent(query)}`);
+    if (!skills || !skills.length) {
+      resultsDiv.innerHTML = '<div style="padding:8px 12px;color:var(--muted);font-size:.85rem;">No skills found</div>';
+      resultsDiv.style.display = 'block';
+      return;
+    }
+    
+    resultsDiv.innerHTML = skills.slice(0, 10).map(s => `
+      <div onclick="selectSkill(${s.id}, '${s.name.replace(/'/g, "\\'")}')" style="padding:8px 12px;cursor:pointer;font-size:.88rem;border-bottom:1px solid var(--border);transition:.15s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='#fff'">
+        ${s.name} <span style="color:var(--muted);font-size:.75rem;">(${s.category})</span>
+      </div>
+    `).join('');
+    resultsDiv.style.display = 'block';
+  } catch (err) {
+    resultsDiv.innerHTML = '<div style="padding:8px 12px;color:#dc2626;font-size:.85rem;">Error loading skills</div>';
+    resultsDiv.style.display = 'block';
+  }
 }
 
+function selectSkill(skillId, skillName) {
+  document.getElementById('selectedSkillId').value = skillId;
+  document.getElementById('selectedSkillName').value = skillName;
+  document.getElementById('skillSearchInput').value = skillName;
+  document.getElementById('skillSearchResults').style.display = 'none';
+}
+
+// Close search results when clicking outside
+document.addEventListener('click', (e) => {
+  const searchInput = document.getElementById('skillSearchInput');
+  const resultsDiv = document.getElementById('skillSearchResults');
+  if (searchInput && resultsDiv && !searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+    resultsDiv.style.display = 'none';
+  }
+});
+
 async function addSkill() {
-  const skillId = document.getElementById('skillSelectInput').value;
+  const skillId = document.getElementById('selectedSkillId').value;
+  const skillName = document.getElementById('selectedSkillName').value;
   const proficiency = document.getElementById('skillProficiency').value;
-  if (!skillId) { toast('Select a skill first', 'error'); return; }
+  
+  if (!skillId) { 
+    toast('Search and select a skill first', 'error'); 
+    return; 
+  }
+  
   try {
     await apiFetch(`/users/${user.id}/skills`, { method: 'POST', body: JSON.stringify({ skill_id: parseInt(skillId), proficiency }) });
-    toast('Skill added!', 'success');
+    toast(`${skillName} added!`, 'success');
+    
+    // Clear inputs
+    document.getElementById('skillSearchInput').value = '';
+    document.getElementById('selectedSkillId').value = '';
+    document.getElementById('selectedSkillName').value = '';
+    
+    // Reload skills
     const profile = await apiFetch(`/users/${user.id}`);
     renderSkillTags(profile.skills || []);
   } catch (err) {
