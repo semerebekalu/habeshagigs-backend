@@ -13,6 +13,36 @@ router.post('/', authenticate, requireVerified, proposalLimiter, async (req, res
     const { job_id, cover_letter, bid_amount, delivery_days } = req.body;
     if (!job_id) return res.status(422).json({ error: 'VALIDATION_ERROR', fields: { job_id: 'Required' } });
     try {
+        // Profile completeness gate — freelancers need at least 60% to submit proposals
+        if (req.user.role === 'freelancer' || req.user.active_role === 'freelancer') {
+            const [[profile]] = await db.query(
+                'SELECT title, bio, hourly_rate, profile_photo_url FROM freelancer_profiles WHERE id = ?',
+                [req.user.id]
+            );
+            const [skills] = await db.query('SELECT COUNT(*) as cnt FROM freelancer_skills WHERE freelancer_id = ?', [req.user.id]);
+            const checks = [
+                !!profile?.title,
+                !!profile?.bio && profile.bio.length > 20,
+                !!profile?.hourly_rate,
+                !!profile?.profile_photo_url,
+                skills[0].cnt > 0
+            ];
+            const score = Math.round((checks.filter(Boolean).length / checks.length) * 100);
+            if (score < 60) {
+                return res.status(403).json({
+                    error: 'PROFILE_INCOMPLETE',
+                    message: `Your profile is only ${score}% complete. You need at least 60% to submit proposals. Please add your title, bio, hourly rate, profile photo, and at least one skill.`,
+                    completion_score: score,
+                    missing: [
+                        !profile?.title && 'Professional title',
+                        (!profile?.bio || profile.bio.length <= 20) && 'Bio (min 20 chars)',
+                        !profile?.hourly_rate && 'Hourly rate',
+                        !profile?.profile_photo_url && 'Profile photo',
+                        skills[0].cnt === 0 && 'At least one skill'
+                    ].filter(Boolean)
+                });
+            }
+        }
         // Check if freelancer already submitted a proposal for this job
         const [[existing]] = await db.query(
             'SELECT id, edit_count, status FROM proposals WHERE job_id = ? AND freelancer_id = ?',

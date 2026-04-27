@@ -137,4 +137,42 @@ router.delete('/:id', authenticate, async (req, res) => {
     res.json({ success: true });
 });
 
+// GET /api/jobs/matched — jobs matching the logged-in freelancer's skills
+router.get('/matched', authenticate, async (req, res) => {
+    try {
+        const [skills] = await db.query(
+            'SELECT skill_id FROM freelancer_skills WHERE freelancer_id = ?',
+            [req.user.id]
+        );
+        if (!skills.length) {
+            // No skills — return recent open jobs
+            const [jobs] = await db.query(
+                `SELECT j.*, u.full_name as client_name FROM jobs j
+                 JOIN users u ON j.client_id = u.id
+                 WHERE j.status = 'open' ORDER BY j.id DESC LIMIT 10`
+            );
+            return res.json({ jobs, matched: false });
+        }
+
+        const skillIds = skills.map(s => s.skill_id);
+        const placeholders = skillIds.map(() => '?').join(',');
+
+        const [jobs] = await db.query(
+            `SELECT j.*, u.full_name as client_name,
+                    COUNT(DISTINCT js.skill_id) as matched_skills
+             FROM jobs j
+             JOIN users u ON j.client_id = u.id
+             LEFT JOIN job_skills js ON j.id = js.job_id AND js.skill_id IN (${placeholders})
+             WHERE j.status = 'open'
+             GROUP BY j.id
+             ORDER BY matched_skills DESC, j.id DESC
+             LIMIT 20`,
+            skillIds
+        );
+        res.json({ jobs, matched: true, skill_count: skillIds.length });
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
 module.exports = router;

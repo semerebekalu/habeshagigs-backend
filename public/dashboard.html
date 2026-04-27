@@ -580,6 +580,36 @@ async function loadOverview() {
       activityEl.textContent = 'No recent activity yet.';
     }
   } catch { document.getElementById('recentActivity').textContent = 'No recent activity yet.'; }
+
+  // Matched jobs for freelancers
+  const isFreelancerUser2 = user?.active_role === 'freelancer' || (user?.role === 'freelancer' && !user?.active_role);
+  if (isFreelancerUser2 && !document.getElementById('matchedJobsBanner')) {
+    try {
+      const result = await apiFetch('/jobs/matched');
+      if (result.jobs && result.jobs.length > 0) {
+        const banner = document.createElement('div');
+        banner.id = 'matchedJobsBanner';
+        banner.className = 'table-card';
+        banner.style.marginTop = '20px';
+        const jobsHtml = result.jobs.slice(0, 5).map(j => `
+          <a href="/job.html?id=${j.id}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;gap:12px;">
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:.9rem;">${j.title}</div>
+              <div style="font-size:.78rem;color:var(--muted);">${j.client_name} · ${j.budget_min}–${j.budget_max} ETB</div>
+            </div>
+            ${j.matched_skills > 0 ? `<span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:12px;font-size:.72rem;font-weight:700;white-space:nowrap;">${j.matched_skills} skill match</span>` : ''}
+          </a>`).join('');
+        banner.innerHTML = `
+          <div class="table-card-header">
+            <span>🎯 Jobs Matching Your Skills</span>
+            <a href="/marketplace.html" class="btn btn-sm btn-outline">View All</a>
+          </div>
+          <div style="padding:0 20px;">${jobsHtml}</div>`;
+        const statsRow = document.querySelector('#tab-overview .stats-row');
+        if (statsRow) statsRow.insertAdjacentElement('afterend', banner);
+      }
+    } catch {}
+  }
 }
 
 async function loadGigs() {

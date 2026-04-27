@@ -97,8 +97,14 @@ async function doRegister() {
   btn.textContent = 'Creating account...';
   btn.disabled = true;
 
+  // Pick up referral code from URL ?ref=XXXXXXXX
+  const refCode = new URLSearchParams(window.location.search).get('ref') || null;
+
   try {
-    const data = await apiFetch('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, phone, password, role }) });
+    const data = await apiFetch('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, phone, password, role, ref_code: refCode })
+    });
     setAuth(data.token, data.user);
     registeredEmail = email;
 
