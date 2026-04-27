@@ -29,9 +29,9 @@ app.use('/api/kyc',           require('./src/routes/kyc'));
 app.use('/api/disputes',      require('./src/routes/disputes'));
 app.use('/api/reviews',       require('./src/routes/reviews'));
 app.use('/api/chat',          require('./src/routes/chat'));
+app.use('/api/skills',        require('./src/routes/skills')); // Dedicated skills route (must be before marketplace)
 app.use('/api/marketplace',   require('./src/routes/marketplace'));
 app.use('/api/match',         require('./src/routes/marketplace'));
-app.use('/api/skills',        require('./src/routes/marketplace'));
 app.use('/api/admin',         require('./src/routes/admin'));
 app.use('/api/i18n',          require('./src/routes/i18n'));
 app.use('/api/invoices',      require('./src/routes/invoices'));
