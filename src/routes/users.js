@@ -213,6 +213,95 @@ router.get('/:id/response-time', async (req, res) => {
     res.json(result);
 });
 
+// GET /api/users/:id/role-context — get user's role information for UI
+router.get('/:id/role-context', async (req, res) => {
+    try {
+        const [[user]] = await db.query(
+            'SELECT role, active_role FROM users WHERE id = ?',
+            [req.params.id]
+        );
+        
+        if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
+        
+        // Determine available roles based on user's base role
+        const availableRoles = [];
+        if (user.role === 'both' || user.role === 'freelancer') availableRoles.push('freelancer');
+        if (user.role === 'both' || user.role === 'client') availableRoles.push('client');
+        if (user.role === 'admin') availableRoles.push('admin');
+        
+        res.json({
+            role: user.role,
+            active_role: user.active_role || user.role,
+            can_switch: user.role === 'both',
+            available_roles: availableRoles,
+            is_admin: user.role === 'admin'
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
+// PUT /api/users/:id/availability — manage availability calendar
+router.put('/:id/availability', authenticate, async (req, res) => {
+    if (req.user.id !== parseInt(req.params.id)) return res.status(403).json({ error: 'FORBIDDEN' });
+    if (req.user.active_role !== 'freelancer') return res.status(403).json({ error: 'FREELANCER_ONLY' });
+    
+    const { dates } = req.body; // Array of { date: 'YYYY-MM-DD', is_available: true/false }
+    
+    if (!Array.isArray(dates) || dates.length === 0) {
+        return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'dates array required' });
+    }
+    
+    try {
+        // Validate date format and prepare batch insert
+        const values = [];
+        for (const entry of dates) {
+            if (!entry.date || !/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
+                return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Invalid date format. Use YYYY-MM-DD' });
+            }
+            const isAvailable = entry.is_available === true || entry.is_available === 1 ? 1 : 0;
+            values.push([req.user.id, entry.date, isAvailable]);
+        }
+        
+        // Use INSERT ... ON DUPLICATE KEY UPDATE to handle updates
+        // First, ensure we have a unique constraint on (freelancer_id, date)
+        await db.query(`
+            INSERT INTO availability_calendar (freelancer_id, date, is_available)
+            VALUES ?
+            ON DUPLICATE KEY UPDATE is_available = VALUES(is_available)
+        `, [values]);
+        
+        res.json({ success: true, updated: dates.length });
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
+// GET /api/users/:id/availability — get availability calendar
+router.get('/:id/availability', async (req, res) => {
+    try {
+        const { start_date, end_date } = req.query;
+        let sql = 'SELECT date, is_available FROM availability_calendar WHERE freelancer_id = ?';
+        const params = [req.params.id];
+        
+        if (start_date) {
+            sql += ' AND date >= ?';
+            params.push(start_date);
+        }
+        if (end_date) {
+            sql += ' AND date <= ?';
+            params.push(end_date);
+        }
+        
+        sql += ' ORDER BY date ASC';
+        
+        const [availability] = await db.query(sql, params);
+        res.json(availability);
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
 // POST /api/users/:id/video-intro
 router.post('/:id/video-intro', authenticate, uploadVideo.single('video'), async (req, res) => {
     if (req.user.id !== parseInt(req.params.id)) return res.status(403).json({ error: 'FORBIDDEN' });

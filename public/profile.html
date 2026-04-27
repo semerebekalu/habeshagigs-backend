@@ -217,6 +217,7 @@
 
 <script src="js/app.js"></script>
 <script src="js/i18n.js"></script>
+<script src="js/profile-roles.js"></script>
 <script>
 const params = new URLSearchParams(window.location.search);
 const profileId = params.get('id');
@@ -243,6 +244,9 @@ async function loadProfile() {
     isOwnProfile = currentUser && currentUser.id === user.id;
 
     renderProfile(user);
+    
+    // Initialize role-based profile sections
+    await initRoleBasedProfile(user.id, isOwnProfile);
   } catch (err) {
     document.getElementById('profileName').textContent = 'Profile not found';
   }
