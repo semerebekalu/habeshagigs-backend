@@ -135,6 +135,16 @@ const EMAIL_TEMPLATES = {
             <div style="text-align:center;margin:24px 0;">
               <a href="${APP_URL}/dashboard.html" style="background:#1E3A8A;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;">View Wallet</a>
             </div>`)
+    }),
+    milestone_overdue: (data) => ({
+        subject: '⏰ Overdue Milestone Needs Attention',
+        html: emailWrap(`
+            <h2 style="color:#f59e0b;margin-top:0;">⏰ Overdue Milestone</h2>
+            <p>Hi ${data.name},</p>
+            <p>${data.message}</p>
+            <div style="text-align:center;margin:24px 0;">
+              <a href="${APP_URL}/dashboard.html" style="background:#1E3A8A;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;">View Contract</a>
+            </div>`)
     })
 };
 

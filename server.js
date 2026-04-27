@@ -383,6 +383,41 @@ cron.schedule('0 2 * * *', async () => {    try {
 });
 console.log('🔍 Daily fraud scan scheduled (2am)');
 
+// Overdue milestone check — runs daily at 8am
+cron.schedule('0 8 * * *', async () => {
+    try {
+        const { db } = require('./src/config/db');
+        const { enqueueNotification } = require('./src/modules/notification/notificationService');
+        const [overdue] = await db.query(
+            `SELECT m.id, m.title, m.due_date, m.contract_id,
+                    c.client_id, c.freelancer_id,
+                    j.title as job_title
+             FROM milestones m
+             JOIN contracts c ON m.contract_id = c.id
+             LEFT JOIN jobs j ON c.job_id = j.id
+             WHERE m.due_date < CURDATE()
+               AND m.status NOT IN ('released', 'approved')
+               AND c.status = 'active'`
+        );
+        for (const ms of overdue) {
+            const daysOverdue = Math.floor((Date.now() - new Date(ms.due_date).getTime()) / (1000 * 60 * 60 * 24));
+            const msg = `Milestone "${ms.title}" is ${daysOverdue} day(s) overdue.`;
+            await enqueueNotification(ms.freelancer_id, 'milestone_overdue', {
+                title: '⏰ Overdue Milestone',
+                message: msg + ' Please submit your work as soon as possible.'
+            }).catch(() => {});
+            await enqueueNotification(ms.client_id, 'milestone_overdue', {
+                title: '⏰ Overdue Milestone',
+                message: msg + ' You may raise a dispute if work is not delivered.'
+            }).catch(() => {});
+        }
+        if (overdue.length > 0) console.log(`⏰ Overdue milestone alerts sent: ${overdue.length}`);
+    } catch (err) {
+        console.error('❌ Overdue milestone cron error:', err.message);
+    }
+});
+console.log('⏰ Overdue milestone check scheduled (daily 8am)');
+
 // ── Start ────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, '0.0.0.0', () => {

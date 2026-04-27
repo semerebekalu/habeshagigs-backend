@@ -579,7 +579,19 @@ function renderMilestone(ms, isClient, isFreelancer) {
   }
 
   const dueDateHtml = ms.due_date
-    ? '<div style="font-size:0.78rem;color:var(--muted);">Due: ' + new Date(ms.due_date).toLocaleDateString() + '</div>'
+    ? (function() {
+        const due = new Date(ms.due_date);
+        const now = new Date();
+        const isOverdue = due < now && ms.status !== 'released' && ms.status !== 'approved';
+        const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+        const color = isOverdue ? '#dc2626' : daysLeft <= 2 ? '#f59e0b' : 'var(--muted)';
+        const label = isOverdue
+          ? '⏰ Overdue by ' + Math.abs(daysLeft) + ' day(s)'
+          : daysLeft === 0 ? '⚠️ Due today'
+          : daysLeft <= 2 ? '⚠️ Due in ' + daysLeft + ' day(s)'
+          : 'Due: ' + due.toLocaleDateString();
+        return '<div style="font-size:0.78rem;color:' + color + ';font-weight:' + (isOverdue ? '700' : '400') + ';">' + label + '</div>';
+      })()
     : '';
   const actionsWrap = actions ? '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + actions + '</div>' : '';
 
