@@ -94,7 +94,7 @@
       <button class="btn btn-teal" id="liveStartBtn" onclick="startLiveCamera()">&#x1F4F7; Start Camera</button>
       <button class="btn btn-primary hidden" id="liveCaptureBtn" onclick="captureLiveSelfie()">&#x1F4F8; Take Selfie</button>
       <button class="btn btn-outline hidden" id="liveRetakeBtn" onclick="retakeLiveSelfie()">&#x1F504; Retake</button>
-      <button class="btn btn-outline" onclick="closeLiveModal()">Cancel</button>
+      <button class="btn btn-outline" onclick="closeLiveModal(); pendingSignRole = null;">Cancel</button>
     </div>
   </div>
 </div>
@@ -676,7 +676,7 @@ function openLiveModal() {
 function closeLiveModal() {
   stopLiveCamera();
   document.getElementById('liveSelfieModal').classList.add('hidden');
-  pendingSignRole = null;
+  // NOTE: do NOT reset pendingSignRole here — proceedToSign needs it
 }
 
 // ── startLiveCamera ────────────────────────────────────────
@@ -748,7 +748,9 @@ function captureLiveSelfie() {
       statusEl.textContent = '&#x2705; Face confirmed. Proceeding to sign...';
       setTimeout(function() {
         closeLiveModal();
-        proceedToSign(pendingSignRole);
+        const roleToSign = pendingSignRole;
+        pendingSignRole = null;
+        proceedToSign(roleToSign);
       }, 1500);
     } catch (err) {
       statusEl.style.background = '#fee2e2';
