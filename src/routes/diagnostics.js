@@ -5,12 +5,18 @@ const { db } = require('../config/db');
 // GET /api/diagnostics/tables - Check if required tables exist
 router.get('/tables', async (req, res) => {
     try {
-        const tables = ['subscriptions', 'referrals', 'users'];
+        const tables = ['subscriptions', 'referrals', 'users', 'skills'];
         const results = {};
         
         for (const table of tables) {
             const [rows] = await db.query(`SHOW TABLES LIKE '${table}'`);
             results[table] = rows.length > 0 ? 'EXISTS' : 'MISSING';
+            
+            // If skills table exists, count rows
+            if (table === 'skills' && rows.length > 0) {
+                const [[{count}]] = await db.query('SELECT COUNT(*) as count FROM skills');
+                results['skills_count'] = count;
+            }
         }
         
         // Check if users table has referral columns
