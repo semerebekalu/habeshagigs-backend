@@ -293,6 +293,19 @@ setImmediate(async () => {
         await addColumnIfMissing('users', 'fraud_score', 'INT DEFAULT 0');
         await addColumnIfMissing('users', 'last_fraud_check', 'DATETIME NULL');
 
+        // Admin audit log table
+        try {
+            await dbConn.query(`CREATE TABLE IF NOT EXISTS admin_audit_log (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                admin_id INT NOT NULL,
+                action VARCHAR(50) NOT NULL,
+                target_type VARCHAR(30) DEFAULT 'users',
+                target_ids JSON NULL,
+                reason TEXT NULL,
+                created_at DATETIME DEFAULT NOW()
+            )`);
+        } catch (e) { console.log('audit log table already exists'); }
+
         console.log('✅ Startup schema checks complete');
     } catch (e) {
         console.error('❌ Startup schema error:', e.message);

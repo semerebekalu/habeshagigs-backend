@@ -20,6 +20,8 @@
     <div class="sidebar-link" onclick="showTab('escrow')"><span class="icon">🔒</span> Escrow</div>
     <div class="sidebar-link" onclick="showTab('withdrawals')"><span class="icon">💸</span> Withdrawals <span id="withdrawalBadge" style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:.72rem;font-weight:700;margin-left:4px;display:none;">0</span></div>
     <div class="sidebar-link" onclick="showTab('announce')"><span class="icon">📢</span> Announcements</div>
+    <div class="sidebar-link" onclick="showTab('revenue')"><span class="icon">💹</span> Revenue</div>
+    <div class="sidebar-link" onclick="showTab('audit')"><span class="icon">📋</span> Audit Log</div>
   </aside>
   <main class="dashboard-main">
 
@@ -94,13 +96,23 @@
 
     <!-- Users -->
     <div id="tab-users" class="hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
         <h2 class="dashboard-title" style="margin:0;">User Management</h2>
-        <input type="text" id="userSearch" placeholder="Search users..." style="padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;outline:none;" oninput="loadUsers()" />
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="userSearch" placeholder="Search users..." style="padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;outline:none;" oninput="loadUsers()" />
+          <select id="bulkAction" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;outline:none;">
+            <option value="">Bulk Action...</option>
+            <option value="suspend">Suspend Selected</option>
+            <option value="unsuspend">Unsuspend Selected</option>
+            <option value="ban">Ban Selected</option>
+            <option value="unban">Unban Selected</option>
+          </select>
+          <button class="btn btn-sm btn-outline" onclick="applyBulkAction()">Apply</button>
+        </div>
       </div>
       <div class="table-card">
-        <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>KYC</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody id="usersTable"><tr><td colspan="6" style="text-align:center;color:var(--muted);">Loading...</td></tr></tbody></table>
+        <table><thead><tr><th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" /></th><th>Name</th><th>Email</th><th>Role</th><th>KYC</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="usersTable"><tr><td colspan="7" style="text-align:center;color:var(--muted);">Loading...</td></tr></tbody></table>
       </div>
     </div>
 
@@ -205,6 +217,34 @@
       </div>
     </div>
 
+    <!-- Revenue Dashboard -->
+    <div id="tab-revenue" class="hidden">
+      <h2 class="dashboard-title">💹 Platform Revenue</h2>
+      <div id="revenueStats" class="stats-row"><div class="loading-spinner">Loading...</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;">
+        <div class="table-card" style="padding:20px;">
+          <div class="table-card-header" style="margin-bottom:12px;"><span>📅 Monthly Breakdown</span></div>
+          <div id="monthlyBreakdown"></div>
+        </div>
+        <div class="table-card" style="padding:20px;">
+          <div class="table-card-header" style="margin-bottom:12px;"><span>🏆 Top Freelancers</span></div>
+          <div id="topFreelancers"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audit Log -->
+    <div id="tab-audit" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h2 class="dashboard-title" style="margin:0;">📋 Admin Audit Log</h2>
+        <button class="btn btn-sm btn-outline" onclick="loadAudit()">Refresh</button>
+      </div>
+      <div class="table-card">
+        <table><thead><tr><th>Admin</th><th>Action</th><th>Targets</th><th>Reason</th><th>Time</th></tr></thead>
+        <tbody id="auditTable"><tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -226,6 +266,8 @@ function showTab(name) {
   if (name === 'moderation') loadModeration();
   if (name === 'escrow') loadEscrow();
   if (name === 'withdrawals') loadWithdrawals('pending');
+  if (name === 'revenue') loadRevenue();
+  if (name === 'audit') loadAudit();
 }
 
 async function loadStats() {
@@ -338,13 +380,14 @@ async function loadUsers() {
     const users = await apiFetch(`/admin/users?search=${encodeURIComponent(search)}`);
     document.getElementById('usersTable').innerHTML = users.map(u => `
       <tr>
+        <td><input type="checkbox" class="user-checkbox" value="${u.id}" /></td>
         <td><strong>${u.full_name}</strong><br/><small style="color:var(--muted);">#${u.id}</small></td>
         <td>${u.email}</td>
         <td><span class="badge badge-${u.role === 'admin' ? 'gold' : u.role === 'freelancer' ? 'teal' : 'silver'}">${u.role}</span></td>
         <td><span class="status status-${u.kyc_status === 'approved' ? 'completed' : u.kyc_status === 'pending' ? 'pending' : 'open'}">${u.kyc_status}</span></td>
         <td>
           ${u.is_banned ? '<span class="status status-cancelled">Banned</span>' :
-            u.is_suspended ? `<span class="status status-disputed">Suspended${u.suspended_until ? '<br/><small>until '+new Date(u.suspended_until).toLocaleDateString()+'</small>' : ''}</span>` :
+            u.is_suspended ? '<span class="status status-disputed">Suspended</span>' :
             '<span class="status status-active">Active</span>'}
         </td>
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -354,8 +397,90 @@ async function loadUsers() {
           ${u.is_banned ? `<button class="btn btn-sm btn-outline" onclick="unbanUser(${u.id})">✅ Unban</button>` : ''}
           ${u.role !== 'admin' ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="deleteUser(${u.id},'${u.full_name.replace(/'/g,"\\'")}')">🗑 Delete</button>` : ''}
         </td>
-      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;">No users found.</td></tr>';
+      </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;">No users found.</td></tr>';
   } catch {}
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.user-checkbox').forEach(c => c.checked = cb.checked);
+}
+
+async function applyBulkAction() {
+  const action = document.getElementById('bulkAction').value;
+  if (!action) { toast('Please select a bulk action', 'error'); return; }
+  const selected = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(c => parseInt(c.value));
+  if (!selected.length) { toast('Please select at least one user', 'error'); return; }
+  if (!confirm(`Apply "${action}" to ${selected.length} user(s)?`)) return;
+  const reason = action === 'suspend' ? prompt('Reason for bulk suspension:') : null;
+  try {
+    const res = await apiFetch('/admin/users/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ user_ids: selected, action, reason })
+    });
+    toast(`✅ ${action} applied to ${res.affected} user(s)${res.skipped_admins > 0 ? ` (${res.skipped_admins} admin(s) skipped)` : ''}`, 'success');
+    document.getElementById('selectAll').checked = false;
+    loadUsers();
+  } catch (err) { toast(err.message || 'Bulk action failed', 'error'); }
+}
+
+async function loadRevenue() {
+  try {
+    const r = await apiFetch('/admin/revenue');
+    document.getElementById('revenueStats').innerHTML = `
+      <div class="stat-card" style="border-left:4px solid var(--blue);">
+        <div class="stat-label">💰 Total Platform Fees</div>
+        <div class="stat-value" style="color:var(--blue);">${parseFloat(r.total_platform_fees).toFixed(2)} ETB</div>
+      </div>
+      <div class="stat-card" style="border-left:4px solid var(--teal);">
+        <div class="stat-label">⭐ Subscription Revenue</div>
+        <div class="stat-value" style="color:var(--teal);">${parseFloat(r.subscription_revenue).toFixed(2)} ETB</div>
+      </div>
+      <div class="stat-card" style="border-left:4px solid #f59e0b;">
+        <div class="stat-label">📢 Promotion Revenue</div>
+        <div class="stat-value" style="color:#f59e0b;">${parseFloat(r.promotion_revenue).toFixed(2)} ETB</div>
+      </div>
+      <div class="stat-card" style="border-left:4px solid #16a34a;">
+        <div class="stat-label">📊 Total Revenue</div>
+        <div class="stat-value" style="color:#16a34a;">${parseFloat(r.total_revenue).toFixed(2)} ETB</div>
+      </div>`;
+
+    document.getElementById('monthlyBreakdown').innerHTML = r.monthly_breakdown.length
+      ? r.monthly_breakdown.map(m => `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem;">
+            <span style="font-weight:600;">${m.month}</span>
+            <span>${m.contracts} contracts</span>
+            <span style="color:var(--blue);font-weight:700;">${parseFloat(m.fees).toFixed(2)} ETB fees</span>
+          </div>`).join('')
+      : '<p style="color:var(--muted);text-align:center;padding:20px;">No completed contracts yet.</p>';
+
+    document.getElementById('topFreelancers').innerHTML = r.top_freelancers.length
+      ? r.top_freelancers.map((f, i) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem;">
+            <div>
+              <span style="color:var(--muted);margin-right:8px;">#${i+1}</span>
+              <strong>${f.full_name}</strong>
+              <div style="font-size:.75rem;color:var(--muted);">${f.contracts} contracts</div>
+            </div>
+            <span style="color:var(--blue);font-weight:700;">${parseFloat(f.total_earned).toFixed(2)} ETB</span>
+          </div>`).join('')
+      : '<p style="color:var(--muted);text-align:center;padding:20px;">No data yet.</p>';
+  } catch (err) { toast('Failed to load revenue data', 'error'); }
+}
+
+async function loadAudit() {
+  try {
+    const logs = await apiFetch('/admin/audit');
+    document.getElementById('auditTable').innerHTML = logs.length
+      ? logs.map(l => `
+          <tr>
+            <td><strong>${l.admin_name}</strong><br/><small style="color:var(--muted);">${l.admin_email}</small></td>
+            <td><span class="badge badge-${l.action.includes('ban') ? 'gold' : l.action.includes('suspend') ? 'silver' : 'teal'}">${l.action}</span></td>
+            <td style="font-size:.8rem;color:var(--muted);">${l.target_ids ? 'Users: ' + JSON.parse(l.target_ids).join(', ') : '—'}</td>
+            <td style="font-size:.82rem;">${l.reason || '—'}</td>
+            <td style="font-size:.78rem;color:var(--muted);">${new Date(l.created_at).toLocaleString()}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No audit log entries yet.</td></tr>';
+  } catch { document.getElementById('auditTable').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Could not load audit log.</td></tr>'; }
 }
 
 function openSuspendModal(userId) {

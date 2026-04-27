@@ -433,4 +433,128 @@ router.post('/fraud/scan/:userId', async (req, res) => {
     }
 });
 
+// GET /api/admin/revenue — platform revenue dashboard
+router.get('/revenue', async (req, res) => {
+    try {
+        // Total fees collected (platform_fee from contracts)
+        const [[totalFees]] = await db.query(
+            "SELECT COALESCE(SUM(platform_fee),0) as total FROM contracts WHERE status = 'completed'"
+        );
+        // Monthly breakdown (last 6 months)
+        const [monthly] = await db.query(
+            `SELECT DATE_FORMAT(completed_at,'%Y-%m') as month,
+                    COUNT(*) as contracts,
+                    COALESCE(SUM(platform_fee),0) as fees,
+                    COALESCE(SUM(total_amount),0) as volume
+             FROM contracts
+             WHERE status = 'completed' AND completed_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+             GROUP BY month ORDER BY month ASC`
+        );
+        // Top earners (freelancers by completed contract value)
+        const [topFreelancers] = await db.query(
+            `SELECT u.id, u.full_name, u.email,
+                    COUNT(c.id) as contracts,
+                    COALESCE(SUM(c.total_amount),0) as total_earned
+             FROM contracts c
+             JOIN users u ON c.freelancer_id = u.id
+             WHERE c.status = 'completed'
+             GROUP BY u.id ORDER BY total_earned DESC LIMIT 10`
+        );
+        // Top clients (by spend)
+        const [topClients] = await db.query(
+            `SELECT u.id, u.full_name, u.email,
+                    COUNT(c.id) as contracts,
+                    COALESCE(SUM(c.total_amount),0) as total_spent
+             FROM contracts c
+             JOIN users u ON c.client_id = u.id
+             WHERE c.status = 'completed'
+             GROUP BY u.id ORDER BY total_spent DESC LIMIT 10`
+        );
+        // Subscription revenue
+        const [[subRevenue]] = await db.query(
+            "SELECT COALESCE(SUM(amount_paid),0) as total FROM subscriptions WHERE status IN ('active','expired','cancelled')"
+        );
+        // Promoted jobs revenue
+        const [[promoRevenue]] = await db.query(
+            "SELECT COALESCE(SUM(amount_paid),0) as total FROM promoted_jobs"
+        );
+
+        res.json({
+            total_platform_fees: totalFees.total,
+            subscription_revenue: subRevenue.total,
+            promotion_revenue: promoRevenue.total,
+            total_revenue: parseFloat(totalFees.total) + parseFloat(subRevenue.total) + parseFloat(promoRevenue.total),
+            monthly_breakdown: monthly,
+            top_freelancers: topFreelancers,
+            top_clients: topClients
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
+// GET /api/admin/audit — admin action audit log
+router.get('/audit', async (req, res) => {
+    try {
+        const [logs] = await db.query(
+            `SELECT al.*, u.full_name as admin_name, u.email as admin_email
+             FROM admin_audit_log al
+             JOIN users u ON al.admin_id = u.id
+             ORDER BY al.created_at DESC LIMIT 200`
+        );
+        res.json(logs);
+    } catch (err) {
+        // Table might not exist yet
+        res.json([]);
+    }
+});
+
+// POST /api/admin/users/bulk — bulk actions on multiple users
+router.post('/users/bulk', async (req, res) => {
+    const { user_ids, action, reason } = req.body;
+    if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+        return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'user_ids array required' });
+    }
+    if (!['suspend', 'unsuspend', 'ban', 'unban'].includes(action)) {
+        return res.status(422).json({ error: 'INVALID_ACTION' });
+    }
+    // Prevent acting on admin accounts
+    const [admins] = await db.query(
+        `SELECT id FROM users WHERE id IN (${user_ids.map(() => '?').join(',')}) AND role = 'admin'`,
+        user_ids
+    );
+    const adminIds = new Set(admins.map(a => a.id));
+    const safeIds = user_ids.filter(id => !adminIds.has(id));
+    if (!safeIds.length) return res.status(403).json({ error: 'FORBIDDEN', message: 'Cannot act on admin accounts' });
+
+    try {
+        const placeholders = safeIds.map(() => '?').join(',');
+        if (action === 'suspend') {
+            await db.query(
+                `UPDATE users SET is_suspended = 1, suspension_reason = ?, suspended_at = NOW() WHERE id IN (${placeholders})`,
+                [reason || 'Bulk action by admin', ...safeIds]
+            );
+        } else if (action === 'unsuspend') {
+            await db.query(
+                `UPDATE users SET is_suspended = 0, suspension_reason = NULL, suspended_until = NULL WHERE id IN (${placeholders})`,
+                safeIds
+            );
+        } else if (action === 'ban') {
+            await db.query(`UPDATE users SET is_banned = 1 WHERE id IN (${placeholders})`, safeIds);
+        } else if (action === 'unban') {
+            await db.query(`UPDATE users SET is_banned = 0, is_suspended = 0 WHERE id IN (${placeholders})`, safeIds);
+        }
+
+        // Log the bulk action
+        await db.query(
+            `INSERT INTO admin_audit_log (admin_id, action, target_type, target_ids, reason) VALUES (?, ?, 'users', ?, ?)`,
+            [req.user.id, action, JSON.stringify(safeIds), reason || null]
+        ).catch(() => {}); // table may not exist yet
+
+        res.json({ success: true, affected: safeIds.length, skipped_admins: adminIds.size });
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
 module.exports = router;
