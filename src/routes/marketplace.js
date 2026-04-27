@@ -5,26 +5,61 @@ const { computeMatchScore } = require('../modules/match/matchScore');
 
 // Simple Redis cache helper — fails gracefully if Redis is down
 let _redisClient = null;
+let _redisConnecting = false;
+
 async function getRedis() {
     if (_redisClient) return _redisClient;
+    if (_redisConnecting) return null; // Don't wait if already connecting
+    
     try {
+        _redisConnecting = true;
         const redis = require('redis');
-        const client = redis.createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
+        const client = redis.createClient({ 
+            url: process.env.REDIS_URL || 'redis://localhost:6379',
+            socket: {
+                connectTimeout: 2000, // 2 second timeout
+                reconnectStrategy: () => false // Don't auto-reconnect
+            }
+        });
         client.on('error', () => { _redisClient = null; });
         await client.connect();
         _redisClient = client;
-    } catch { _redisClient = null; }
+        _redisConnecting = false;
+    } catch { 
+        _redisClient = null; 
+        _redisConnecting = false;
+    }
     return _redisClient;
 }
 
 async function cacheGet(key) {
-    try { const r = await getRedis(); return r ? JSON.parse(await r.get(key)) : null; } catch { return null; }
+    try { 
+        const r = await Promise.race([
+            getRedis(),
+            new Promise(resolve => setTimeout(() => resolve(null), 1000)) // 1 second timeout
+        ]);
+        return r ? JSON.parse(await r.get(key)) : null; 
+    } catch { return null; }
 }
+
 async function cacheSet(key, value, ttlSeconds = 300) {
-    try { const r = await getRedis(); if (r) await r.set(key, JSON.stringify(value), { EX: ttlSeconds }); } catch {}
+    try { 
+        const r = await Promise.race([
+            getRedis(),
+            new Promise(resolve => setTimeout(() => resolve(null), 1000)) // 1 second timeout
+        ]);
+        if (r) await r.set(key, JSON.stringify(value), { EX: ttlSeconds }); 
+    } catch {}
 }
+
 async function cacheDel(key) {
-    try { const r = await getRedis(); if (r) await r.del(key); } catch {}
+    try { 
+        const r = await Promise.race([
+            getRedis(),
+            new Promise(resolve => setTimeout(() => resolve(null), 1000)) // 1 second timeout
+        ]);
+        if (r) await r.del(key); 
+    } catch {}
 }
 
 // GET /api/marketplace
