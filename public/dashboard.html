@@ -502,10 +502,9 @@
   </main>
 </div>
 
-<div class="notif-panel hidden" id="notifPanel"><div class="notif-header"><h4>Notifications</h4><button onclick="markAllRead()">Mark all read</button></div><div id="notifList"></div></div>
-
 <script src="js/app.js?v=2"></script>
 <script src="js/i18n.js?v=2"></script>
+<script src="js/notifications.js?v=1"></script>
 <script>
 if (!isLoggedIn()) window.location.href = '/login.html';
 const user = getUser();
@@ -1631,28 +1630,9 @@ async function saveClientPreferences() {
   } catch (err) { toast(err.message || 'Save failed', 'error'); }
 }
 
-async function loadNotifications() {
-  if (!user) return;
-  try {
-    const data = await apiFetch(`/notifications/${user.id}`);
-    const badge = document.getElementById('notifBadge');
-    if (badge) {
-      badge.textContent = data.unreadCount;
-      badge.classList.toggle('hidden', data.unreadCount === 0);
-    }
-    const list = document.getElementById('notifList');
-    if (list) {
-      list.innerHTML = data.notifications.slice(0, 15).map(n => {
-        const isKyc = n.event_type === 'kyc_approved' || n.event_type === 'kyc_rejected';
-        return `<div class="notif-item ${n.is_read ? '' : 'unread'}" onclick="markRead(${n.id})" style="${isKyc ? 'border-left:3px solid ' + (n.event_type === 'kyc_approved' ? '#16a34a' : '#dc2626') + ';' : ''}">
-          <strong>${n.title}</strong>
-          <small style="display:block;margin-top:3px;color:var(--muted);">${n.message}</small>
-          <small style="color:var(--border);font-size:0.75rem;">${new Date(n.created_at).toLocaleString()}</small>
-        </div>`;
-      }).join('') || '<div class="notif-item"><small>No notifications yet</small></div>';
-    }
-  } catch {}
-}
+// loadNotifications is now handled by notifications.js (NotifCenter)
+// Legacy stub kept for backward compatibility
+async function loadNotifications() { /* handled by NotifCenter */ }
 </script>
 </body>
 </html>
