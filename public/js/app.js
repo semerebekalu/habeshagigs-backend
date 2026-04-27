@@ -1,5 +1,20 @@
 const API = `${window.location.origin}/api`;
 
+// ── Dark mode ──────────────────────────────────────────────
+(function initDarkMode() {
+    const saved = localStorage.getItem('eg_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+})();
+
+function toggleDarkMode() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('eg_theme', next);
+    const btn = document.getElementById('darkToggle');
+    if (btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
+}
+
 // ── Auth helpers ───────────────────────────────────────────
 function getToken() { return localStorage.getItem('eg_token'); }
 function getUser()  { try { return JSON.parse(localStorage.getItem('eg_user')); } catch { return null; } }
@@ -58,6 +73,18 @@ function updateNav() {
     document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !user || user.role !== 'admin'));
     document.querySelectorAll('.client-only').forEach(el => el.classList.toggle('hidden', !isClientUser));
     document.querySelectorAll('.freelancer-only').forEach(el => el.classList.toggle('hidden', !isFreelancerUser));
+
+    // Add dark mode toggle to nav-actions if not already there
+    const actions = document.querySelector('.nav-actions');
+    if (actions && !document.getElementById('darkToggle')) {
+        const btn = document.createElement('button');
+        btn.id = 'darkToggle';
+        btn.className = 'dark-toggle';
+        btn.title = 'Toggle dark mode';
+        btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+        btn.onclick = toggleDarkMode;
+        actions.insertBefore(btn, actions.firstChild);
+    }
 
     // Show verified badge in nav if user is verified
     if (loggedIn && user && user.id) {
