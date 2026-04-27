@@ -36,4 +36,14 @@ router.get('/tables', async (req, res) => {
     }
 });
 
+// GET /api/diagnostics/skills-test - Test skills query directly
+router.get('/skills-test', async (req, res) => {
+    try {
+        const [skills] = await db.query('SELECT id, name, category FROM skills LIMIT 10');
+        res.json({ status: 'ok', count: skills.length, sample: skills });
+    } catch (err) {
+        res.status(500).json({ error: 'DATABASE_ERROR', message: err.message, stack: err.stack });
+    }
+});
+
 module.exports = router;
