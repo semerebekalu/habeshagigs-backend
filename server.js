@@ -51,6 +51,7 @@ app.use('/api/translate',     require('./src/routes/ai'));
 app.use('/api/group-chats',   require('./src/routes/groupChats'));
 app.use('/api/subscriptions', require('./src/routes/subscriptions').router);
 app.use('/api/referrals',     require('./src/routes/referrals').router);
+app.use('/api/diagnostics',   require('./src/routes/diagnostics'));
 
 // ── Static frontend ─────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public'), {
