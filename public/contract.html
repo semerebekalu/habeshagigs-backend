@@ -139,7 +139,11 @@
     <div class="form-group">
       <label>Rating</label>
       <div style="display:flex;gap:8px;margin-top:6px;" id="starRating">
-        ${[1,2,3,4,5].map(n => `<span onclick="setRating(${n})" style="font-size:2rem;cursor:pointer;transition:.1s;" data-star="${n}">☆</span>`).join('')}
+        <span onclick="setRating(1)" style="font-size:2rem;cursor:pointer;transition:.1s;" data-star="1">☆</span>
+        <span onclick="setRating(2)" style="font-size:2rem;cursor:pointer;transition:.1s;" data-star="2">☆</span>
+        <span onclick="setRating(3)" style="font-size:2rem;cursor:pointer;transition:.1s;" data-star="3">☆</span>
+        <span onclick="setRating(4)" style="font-size:2rem;cursor:pointer;transition:.1s;" data-star="4">☆</span>
+        <span onclick="setRating(5)" style="font-size:2rem;cursor:pointer;transition:.1s;" data-star="5">☆</span>
       </div>
     </div>
     <div class="form-group">
@@ -670,17 +674,20 @@ function retakeLiveSelfie() {
 async function proceedToSign(role) {
   let signature = '';
   const drawPad = document.getElementById(`draw-pad-${role}`);
+  const typePad = document.getElementById(`type-pad-${role}`);
+  const isTyping = typePad && !typePad.classList.contains('hidden');
 
-  if (!drawPad?.classList.contains('hidden')) {
-    const c = document.getElementById(`sigCanvas-${role}`);
-    signature = c ? c.toDataURL() : '';
-    const ctx = c?.getContext('2d');
-    const data = ctx?.getImageData(0, 0, c.width, c.height).data;
-    const hasDrawing = data && Array.from(data).some(v => v !== 0);
-    if (!hasDrawing) { toast('Please draw your signature first', 'error'); return; }
-  } else {
+  if (isTyping) {
     signature = document.getElementById(`sigTyped-${role}`)?.value?.trim();
-    if (!signature) { toast('Please type your name to sign', 'error'); return; }
+    if (!signature) { toast('Please type your full name to sign', 'error'); return; }
+  } else {
+    const c = document.getElementById(`sigCanvas-${role}`);
+    if (!c) { toast('Signature pad not found', 'error'); return; }
+    const ctx = c.getContext('2d');
+    const data = ctx.getImageData(0, 0, c.width, c.height).data;
+    const hasDrawing = Array.from(data).some(v => v !== 0);
+    if (!hasDrawing) { toast('Please draw your signature first', 'error'); return; }
+    signature = c.toDataURL();
   }
 
   try {
@@ -1030,7 +1037,6 @@ async function confirmCancel() {
     document.getElementById('cancelModal').classList.add('hidden');
     setTimeout(() => window.location.href = '/dashboard.html', 1500);
   } catch (err) { toast(err.message || 'Failed to cancel', 'error'); }
-}
 }
 
 loadContract();
