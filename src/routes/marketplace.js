@@ -137,7 +137,8 @@ router.get('/skills', async (req, res) => {
             console.log('Cache error, fetching from DB:', cacheErr.message);
         }
         
-        const [skills] = await db.query('SELECT id, name, category FROM skills ORDER BY name ASC');
+        // Get distinct skills (in case of duplicates from multiple migrations)
+        const [skills] = await db.query('SELECT DISTINCT name, MIN(id) as id, category FROM skills GROUP BY name, category LIMIT 200');
         
         // Try to cache, but don't fail if cache fails
         try {
