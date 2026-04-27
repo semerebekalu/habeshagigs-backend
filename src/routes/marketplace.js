@@ -128,12 +128,27 @@ router.get('/job/:jobId', async (req, res) => {
 // GET /api/skills — all skills for dropdowns
 router.get('/skills', async (req, res) => {
     try {
-        const cached = await cacheGet('skills:all');
-        if (cached) return res.json(cached);
+        // Try cache first
+        try {
+            const cached = await cacheGet('skills:all');
+            if (cached) return res.json(cached);
+        } catch (cacheErr) {
+            // Cache error, continue without cache
+            console.log('Cache error, fetching from DB:', cacheErr.message);
+        }
+        
         const [skills] = await db.query('SELECT id, name, category FROM skills ORDER BY name ASC');
-        await cacheSet('skills:all', skills, 3600); // cache 1 hour
+        
+        // Try to cache, but don't fail if cache fails
+        try {
+            await cacheSet('skills:all', skills, 3600); // cache 1 hour
+        } catch (cacheErr) {
+            console.log('Failed to cache skills:', cacheErr.message);
+        }
+        
         res.json(skills);
     } catch (err) {
+        console.error('Skills endpoint error:', err);
         res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
     }
 });
