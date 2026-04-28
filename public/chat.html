@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Messages — Ethio Gigs</title>
+  <title>Messages â€” Ethio Gigs</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <script src="/socket.io/socket.io.js"></script>
@@ -10,7 +10,7 @@
     * { box-sizing: border-box; }
     body { background: #f0f2f5; margin: 0; }
 
-    /* ── Layout ── */
+    /* â”€â”€ Layout â”€â”€ */
     .chat-app {
       display: grid;
       grid-template-columns: 340px 1fr;
@@ -19,7 +19,7 @@
       box-shadow: 0 2px 20px rgba(0,0,0,.08);
     }
 
-    /* ── Sidebar ── */
+    /* â”€â”€ Sidebar â”€â”€ */
     .chat-sidebar {
       display: flex;
       flex-direction: column;
@@ -67,7 +67,7 @@
       color: #111b21;
     }
     .search-box::before {
-      content: '🔍';
+      content: 'ðŸ”';
       position: absolute;
       left: 10px;
       top: 50%;
@@ -142,7 +142,7 @@
       line-height: 1.6;
     }
 
-    /* ── Chat window ── */
+    /* â”€â”€ Chat window â”€â”€ */
     .chat-window {
       display: flex;
       flex-direction: column;
@@ -433,11 +433,11 @@
     <a href="/" class="logo">Ethio<span>Gigs</span></a>
     <div class="nav-links">
       <a href="/dashboard.html">Dashboard</a>
-      <a href="/group-chat.html">👥 Groups</a>
+      <a href="/group-chat.html">ðŸ‘¥ Groups</a>
     </div>
     <div class="nav-actions">
-      <button class="lang-toggle" id="langToggle">🇪🇹 አማርኛ</button>
-      <div class="notif-bell" id="notifBell">🔔 <span class="notif-badge hidden" id="notifBadge">0</span></div>
+      <button class="lang-toggle" id="langToggle">ðŸ‡ªðŸ‡¹ áŠ áˆ›áˆ­áŠ›</button>
+      <div class="notif-bell" id="notifBell">ðŸ”” <span class="notif-badge hidden" id="notifBadge">0</span></div>
       <button class="btn btn-outline" id="logoutBtn">Logout</button>
     </div>
   </div>
@@ -449,7 +449,7 @@
     <div class="sidebar-top">
       <div class="sidebar-top-row">
         <h4>Messages</h4>
-        <button class="new-chat-btn" onclick="showNewChat()">✏️ New Chat</button>
+        <button class="new-chat-btn" onclick="showNewChat()">âœï¸ New Chat</button>
       </div>
       <div class="search-box">
         <input type="text" id="convSearch" placeholder="Search or start new chat" oninput="filterConvs(this.value)" />
@@ -463,10 +463,10 @@
   <!-- Chat window -->
   <div class="chat-window" id="chatWindow">
     <div class="chat-empty-state">
-      <div class="empty-icon">💬</div>
+      <div class="empty-icon">ðŸ’¬</div>
       <h3>Ethio Gigs Messages</h3>
       <p>Send and receive messages with freelancers and clients. Select a conversation or start a new one.</p>
-      <button class="btn btn-primary" onclick="showNewChat()">✏️ Start a Conversation</button>
+      <button class="btn btn-primary" onclick="showNewChat()">âœï¸ Start a Conversation</button>
     </div>
   </div>
 </div>
@@ -488,6 +488,7 @@
   </div>
 </div>
 
+
 <script src="js/app.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/notifications.js?v=1"></script>
@@ -498,26 +499,20 @@ let socket = null;
 let activeConvId = null;
 let allConvs = [];
 
-// ── Socket ─────────────────────────────────────────────────
+// ── Socket ──────────────────────────────────────────────────
 function connectSocket() {
-  socket = io({ auth: { token: getToken() } });
+  socket = io({ auth: { token: getToken() }, reconnectionDelay: 1000 });
   socket.on('connect', () => console.log('✅ Socket connected'));
   socket.on('connect_error', (e) => console.warn('Socket error:', e.message));
 
   socket.on('chat:receive', (msg) => {
-    // Server only sends this to the RECIPIENT — not back to sender.
-    // So we never need to check msg.sender_id === user.id here.
-
+    // Server only sends this to the RECIPIENT — not back to sender
     if (msg.conversation_id === activeConvId) {
-      // Receiver has this conversation open — show message immediately
       appendMessage(msg, false, true);
-      // Mark as read
       socket.emit('chat:read', { conversation_id: activeConvId });
     } else {
-      // Different conversation — update preview + badge
-      updateConvPreview(msg.conversation_id, msg.content, msg.sender_name);
+      updateConvPreview(msg.conversation_id, msg.content);
       incrementUnreadBadge(msg.conversation_id);
-      // If this conversation isn't in the list yet, reload
       if (!allConvs.find(c => c.id === msg.conversation_id)) {
         loadConversations(false);
       }
@@ -539,39 +534,36 @@ function connectSocket() {
     if (data.conversation_id === activeConvId) {
       document.querySelectorAll('.msg-status').forEach(el => {
         el.textContent = '✓✓';
-        el.classList.add('read');
+        el.style.color = '#53bdeb';
       });
     }
   });
 }
 
-function container_scrollBottom() {
-  const c = document.getElementById('messages');
-  if (c) c.scrollTop = c.scrollHeight;
-}
-
-// ── Load conversations ─────────────────────────────────────
+// ── Conversations ───────────────────────────────────────────
 async function loadConversations(autoOpen = true) {
   try {
     const convs = await apiFetch(`/chat/conversations/${user.id}`);
     allConvs = convs;
     renderConvList(convs);
-    // Auto-open if URL has ?with=userId
-    const params = new URLSearchParams(window.location.search);
-    const withUser = params.get('with');
-    if (withUser) openOrCreateConv(parseInt(withUser));
-  } catch (err) {
-    document.getElementById('convList').innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center;">Could not load conversations.</div>';
+    if (autoOpen) {
+      const params = new URLSearchParams(window.location.search);
+      const withUser = params.get('with');
+      if (withUser) openOrCreateConv(parseInt(withUser));
+    }
+  } catch {
+    document.getElementById('convList').innerHTML =
+      '<div style="padding:20px;text-align:center;color:#667781;">Could not load conversations.</div>';
   }
 }
 
 function renderConvList(convs) {
   const list = document.getElementById('convList');
   if (!convs.length) {
-    list.innerHTML = `<div class="conv-empty" style="padding:40px 20px;text-align:center;color:#667781;">
+    list.innerHTML = `<div style="padding:40px 20px;text-align:center;color:#667781;">
       <div style="font-size:2.5rem;margin-bottom:10px;">💬</div>
       <div style="font-weight:600;margin-bottom:4px;color:#111b21;">No conversations yet</div>
-      <div style="font-size:.85rem;">Start one by clicking "New Chat"</div>
+      <div style="font-size:.85rem;">Click "New Chat" to start one</div>
     </div>`;
     return;
   }
@@ -600,10 +592,10 @@ function renderConvList(convs) {
   }).join('');
 }
 
-function filterConvs(query) {
+function filterConvs(q) {
   const filtered = allConvs.filter(c => {
     const name = c.participant_a === user.id ? c.participant_b_name : c.participant_a_name;
-    return (name || '').toLowerCase().includes(query.toLowerCase());
+    return (name || '').toLowerCase().includes(q.toLowerCase());
   });
   renderConvList(filtered);
 }
@@ -613,7 +605,6 @@ function updateConvPreview(convId, content) {
   if (el) el.textContent = (content || '').substring(0, 50);
   const timeEl = document.querySelector(`#conv-${convId} .conv-time`);
   if (timeEl) timeEl.textContent = 'now';
-  // Move to top of list
   const convEl = document.getElementById(`conv-${convId}`);
   const list = document.getElementById('convList');
   if (convEl && list) list.prepend(convEl);
@@ -629,13 +620,13 @@ function incrementUnreadBadge(convId) {
       badge = document.createElement('div');
       badge.className = 'conv-unread';
       badge.textContent = '1';
-      const previewRow = convEl.querySelector('.conv-preview-row');
-      if (previewRow) previewRow.appendChild(badge);
+      const row = convEl.querySelector('.conv-preview-row');
+      if (row) row.appendChild(badge);
     }
   }
 }
 
-// ── Open conversation ──────────────────────────────────────
+// ── Open conversation ───────────────────────────────────────
 async function openConversation(convId, name, otherId) {
   activeConvId = convId;
   document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
@@ -680,7 +671,6 @@ async function openConversation(convId, name, otherId) {
       </div>
     </div>`;
 
-  // Load message history
   try {
     const messages = await apiFetch(`/chat/messages/${convId}`);
     const container = document.getElementById('messages');
@@ -707,6 +697,8 @@ async function openConversation(convId, name, otherId) {
 
   document.getElementById('msgInput')?.focus();
   markConvRead(convId);
+  // Mobile: hide sidebar
+  document.getElementById('chatSidebar')?.classList.remove('mobile-open');
 }
 
 async function openOrCreateConv(otherId) {
@@ -715,45 +707,33 @@ async function openOrCreateConv(otherId) {
       method: 'POST',
       body: JSON.stringify({ other_user_id: otherId })
     });
-    await loadConversations();
-    // Find the conversation and open it
-    const conv = allConvs.find(c => c.id === res.conversation_id);
-    if (conv) {
-      const otherName = conv.participant_a === user.id ? conv.participant_b_name : conv.participant_a_name;
+    const convs = await apiFetch(`/chat/conversations/${user.id}`);
+    allConvs = convs;
+    renderConvList(convs);
+    const found = convs.find(c => c.id === res.conversation_id);
+    if (found) {
+      const otherName = found.participant_a === user.id ? found.participant_b_name : found.participant_a_name;
       openConversation(res.conversation_id, otherName || 'User', otherId);
-    } else {
-      // Reload and try again
-      const convs = await apiFetch(`/chat/conversations/${user.id}`);
-      allConvs = convs;
-      renderConvList(convs);
-      const found = convs.find(c => c.id === res.conversation_id);
-      if (found) {
-        const otherName = found.participant_a === user.id ? found.participant_b_name : found.participant_a_name;
-        openConversation(res.conversation_id, otherName || 'User', otherId);
-      }
     }
   } catch (err) {
     toast(err.message || 'Could not start conversation', 'error');
   }
 }
 
-// ── Append message ─────────────────────────────────────────
-function appendMessage(msg, isMine, isFirst = true) {
+// ── Append message ──────────────────────────────────────────
+function appendMessage(msg, isMine, isFirst) {
   const container = document.getElementById('messages');
   if (!container) return;
-
-  // Dedup: skip if real id already rendered
   if (msg.id && !String(msg.id).startsWith('temp_') &&
       container.querySelector(`[data-msg-id="${msg.id}"]`)) return;
 
   const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const ct = msg.content_type || 'text';
-
   let contentHtml = '';
+
   if (ct === 'image' && msg.file_url) {
-    contentHtml = `<img class="msg-img" src="${msg.file_url}"
-      onclick="window.open('${msg.file_url}','_blank')" alt="image"
-      style="max-width:220px;border-radius:6px;display:block;cursor:pointer;margin-bottom:4px;" />`;
+    contentHtml = `<img src="${msg.file_url}" onclick="window.open('${msg.file_url}','_blank')"
+      style="max-width:220px;border-radius:6px;display:block;cursor:pointer;margin-bottom:4px;" alt="image" />`;
     if (msg.content && msg.content !== msg.file_url.split('/').pop())
       contentHtml += `<div>${escapeHtml(msg.content)}</div>`;
   } else if (ct === 'document' && msg.file_url) {
@@ -769,7 +749,7 @@ function appendMessage(msg, isMine, isFirst = true) {
   }
 
   const statusHtml = isMine
-    ? `<span class="msg-status${msg.is_read ? ' read' : ''}" style="font-size:.7rem;color:${msg.is_read?'#53bdeb':'#667781'};">${msg.is_read ? '✓✓' : '✓'}</span>`
+    ? `<span class="msg-status" style="font-size:.7rem;color:${msg.is_read ? '#53bdeb' : '#667781'};">${msg.is_read ? '✓✓' : '✓'}</span>`
     : '';
 
   const el = document.createElement('div');
@@ -789,36 +769,34 @@ function appendMessage(msg, isMine, isFirst = true) {
   container.scrollTop = container.scrollHeight;
 }
 
+function escapeHtml(t) {
+  return (t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
 function formatDate(dateStr) {
   const d = new Date(dateStr);
   const today = new Date();
-  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === today.toDateString()) return 'Today';
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function incrementUnreadBadge(convId) {
-  const el = document.querySelector(`#conv-${convId} .conv-unread`);
-  if (el) {
-    el.textContent = parseInt(el.textContent || '0') + 1;
-    el.style.display = 'flex';
-  } else {
-    const convEl = document.getElementById(`conv-${convId}`);
-    if (convEl) {
-      const badge = document.createElement('div');
-      badge.className = 'conv-unread';
-      badge.textContent = '1';
-      convEl.appendChild(badge);
-    }
-  }
+function getTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'now';
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d`;
+  return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-function escapeHtml(text) {
-  return (text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-}
-
-// ── Send message ───────────────────────────────────────────
+// ── Send ────────────────────────────────────────────────────
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -852,7 +830,7 @@ async function sendMessage() {
 
   updateConvPreview(activeConvId, content);
 
-  if (socket?.connected) {
+  if (socket && socket.connected) {
     socket.emit('chat:send', { conversation_id: activeConvId, content, content_type: 'text' });
   } else {
     try {
@@ -870,46 +848,34 @@ async function sendFile() {
   const input = document.getElementById('fileAttachInput');
   if (!input || !input.files[0] || !activeConvId) return;
   const file = input.files[0];
+  if (file.size > 25 * 1024 * 1024) { toast('File must be under 25 MB', 'error'); input.value = ''; return; }
 
-  if (file.size > 25 * 1024 * 1024) {
-    toast('File must be under 25 MB', 'error');
-    input.value = '';
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('file', file);
+  const fd = new FormData();
+  fd.append('file', file);
   try {
     toast('Uploading...', '');
-    const res = await fetch(`${window.location.origin}/api/chat/upload`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${getToken()}` },
-      body: formData
+    const res = await fetch(`${location.origin}/api/chat/upload`, {
+      method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd
     });
     const data = await res.json();
     if (!res.ok) throw data;
 
-    const content = file.name;
-    // Optimistic append
-    const tempMsg = {
-      id: 'temp_' + Date.now(),
-      conversation_id: activeConvId,
-      sender_id: user.id,
-      sender_name: user.name,
-      content,
-      content_type: data.content_type,
-      file_url: data.file_url,
-      created_at: new Date().toISOString(),
-      is_read: 0
-    };
-    appendMessage(tempMsg, true);
+    const tempId = 'temp_' + Date.now();
+    appendMessage({
+      id: tempId, conversation_id: activeConvId,
+      sender_id: user.id, sender_name: user.name,
+      content: file.name, content_type: data.content_type,
+      file_url: data.file_url, created_at: new Date().toISOString(), is_read: 0
+    }, true, true);
 
-    // Emit via socket — server broadcasts to recipient only
     if (socket && socket.connected) {
-      socket.emit('chat:send', { conversation_id: activeConvId, content, content_type: data.content_type, file_url: data.file_url });
+      socket.emit('chat:send', {
+        conversation_id: activeConvId, content: file.name,
+        content_type: data.content_type, file_url: data.file_url
+      });
     }
+    updateConvPreview(activeConvId, `📎 ${file.name}`);
     input.value = '';
-    updateConvPreview(activeConvId, `📎 ${content}`);
   } catch (err) {
     toast(err.message || 'Upload failed', 'error');
   }
@@ -919,9 +885,6 @@ async function markConvRead(convId) {
   if (socket && socket.connected) {
     socket.emit('chat:read', { conversation_id: convId });
   }
-  // Clear unread badge
-  const badge = document.querySelector(`#conv-${convId} .conv-unread`);
-  if (badge) badge.remove();
 }
 
 function autoResize(el) {
@@ -935,6 +898,7 @@ function showNewChat() {
   m.style.display = 'flex';
   setTimeout(() => document.getElementById('newChatTarget')?.focus(), 50);
 }
+
 function closeNewChat() {
   document.getElementById('newChatModal').style.display = 'none';
   document.getElementById('newChatTarget').value = '';
@@ -942,36 +906,28 @@ function closeNewChat() {
 }
 
 async function startNewChat() {
-
-async function startNewChat() {
   const target = document.getElementById('newChatTarget').value.trim();
   if (!target) { toast('Enter a username or email', 'error'); return; }
   try {
     let userId = null;
-    const isUsername = target.startsWith('@') || (!target.includes('@') && isNaN(parseInt(target)));
-    const isEmail = target.includes('@') && target.includes('.');
-    const isId = !isNaN(parseInt(target));
-
-    if (isUsername) {
+    if (target.startsWith('@') || (!target.includes('@') && isNaN(parseInt(target)))) {
       const found = await apiFetch(`/users/search?username=${encodeURIComponent(target.replace('@',''))}`);
-      if (!found || !found.id) { toast(`@${target.replace('@','')} not found`, 'error'); return; }
+      if (!found || !found.id) { toast('User not found', 'error'); return; }
       userId = found.id;
-    } else if (isEmail) {
+    } else if (target.includes('@') && target.includes('.')) {
       const found = await apiFetch(`/users/search?email=${encodeURIComponent(target)}`);
       if (!found || !found.id) { toast('No user found with that email', 'error'); return; }
       userId = found.id;
-    } else if (isId) {
+    } else if (!isNaN(parseInt(target))) {
       userId = parseInt(target);
     } else {
       toast('Enter a valid @username, email, or user ID', 'error'); return;
     }
-
     if (userId === user.id) { toast("You can't message yourself", 'error'); return; }
     closeNewChat();
     await openOrCreateConv(userId);
   } catch (err) {
-    if (err.error === 'USER_NOT_FOUND') toast('User not found', 'error');
-    else toast(err.message || 'Failed to start chat', 'error');
+    toast(err.message || 'Failed to start chat', 'error');
   }
 }
 
@@ -989,22 +945,16 @@ async function previewChatTarget(val) {
         found = await apiFetch(`/users/search?email=${encodeURIComponent(val)}`).catch(() => null);
       }
       if (found && found.id) {
-        preview.innerHTML = `<span style="color:#16a34a;">✅ Found: <strong>${found.full_name}</strong>${found.username ? ` (@${found.username})` : ''} · ${found.role}</span>`;
+        preview.innerHTML = `<span style="color:#16a34a;">✅ <strong>${found.full_name}</strong>${found.username ? ` (@${found.username})` : ''}</span>`;
       }
     } catch { preview.textContent = ''; }
   }, 400);
 }
 
-function getTimeAgo(dateStr) {
-  if (!dateStr) return '';
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'now';
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
-}
+// Close modal on backdrop click
+document.getElementById('newChatModal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('newChatModal')) closeNewChat();
+});
 
 connectSocket();
 loadConversations();
