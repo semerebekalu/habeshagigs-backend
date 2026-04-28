@@ -1238,7 +1238,13 @@ async function uploadAvatarPhoto(input) {
     });
     const data = await res.json();
     if (data.url) {
+      // Update DOM immediately
       document.getElementById('dashAvatarImg').src = data.url;
+      // Update localStorage so other pages/devices see the new photo
+      const stored = JSON.parse(localStorage.getItem('eg_user') || '{}');
+      stored.avatar = data.url;
+      stored.profile_photo_url = data.url;
+      localStorage.setItem('eg_user', JSON.stringify(stored));
       toast('Profile photo updated!', 'success');
     }
   } catch { toast('Upload failed', 'error'); }

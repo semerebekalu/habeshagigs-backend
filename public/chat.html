@@ -451,20 +451,25 @@
 
     /* Mobile */
     @media (max-width: 768px) {
-      .chat-app { grid-template-columns: 1fr; }
+      .chat-app { grid-template-columns: 1fr; position: relative; }
       .chat-sidebar {
         position: fixed;
         inset: 64px 0 0 0;
         z-index: 100;
         transform: translateX(-100%);
-        transition: transform .25s;
+        transition: transform .25s ease;
         width: 100%;
+        max-width: 360px;
+        box-shadow: 4px 0 20px rgba(0,0,0,.15);
       }
       .chat-sidebar.mobile-open { transform: translateX(0); }
+      .chat-window { width: 100%; }
       .chat-messages {
         padding: clamp(6px, 2vw, 12px);
       }
       .msg-bubble { max-width: clamp(200px, 80%, 400px); }
+      .chat-win-header { padding: 8px 12px; }
+      .chat-input-area { padding: 8px 12px; }
     }
     @media (min-width: 769px) {
       .mobile-back-btn { display: none !important; }
@@ -691,6 +696,9 @@ async function openConversation(convId, name, otherId) {
 
   document.getElementById('chatWindow').innerHTML =
     '<div class="chat-win-header">' +
+    '<button class="mobile-back-btn" onclick="document.getElementById(\'chatSidebar\').classList.add(\'mobile-open\')" style="background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:#54656f;display:flex;align-items:center;">' +
+    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>' +
+    '</button>' +
     '<img src="' + avatar + '" alt="' + safeName + '" onclick="window.open(\'/profile.html?id=' + otherId + '\',\'_blank\')" />' +
     '<div class="chat-win-info">' +
     '<div class="chat-win-name">' + safeName + '</div>' +
@@ -913,11 +921,15 @@ async function sendFile() {
     input.value = '';
     return;
   }
+
+  // Show uploading indicator in input area
+  var sendBtn = document.getElementById('sendBtn') || document.querySelector('.send-btn');
+  if (sendBtn) sendBtn.disabled = true;
+
   var formData = new FormData();
   formData.append('file', file);
 
   try {
-    if (typeof toast === 'function') toast('Uploading...', '');
     var token = getToken();
     var res = await fetch('/api/chat/upload', {
       method: 'POST',
@@ -925,9 +937,9 @@ async function sendFile() {
       body: formData
     });
     var data = await res.json();
-    if (!res.ok) throw data;
+    if (!res.ok) throw new Error(data.message || 'Upload failed');
 
-    // data.file_url is the path, data.content_type is 'image'/'document'/'voice'
+    // Now append with the real file_url
     var tempId = 'temp_' + Date.now();
     appendMessage({
       id: tempId,
@@ -940,6 +952,7 @@ async function sendFile() {
       is_read: 0
     }, true, true);
 
+    // Emit to recipient via socket
     if (socket && socket.connected) {
       socket.emit('chat:send', {
         conversation_id: activeConvId,
@@ -950,10 +963,12 @@ async function sendFile() {
     }
     updateConvPreview(activeConvId, data.content_type === 'image' ? '[Image]' : '[File: ' + file.name + ']');
   } catch(e) {
-    if (typeof toast === 'function') toast('Upload failed', 'error');
+    if (typeof toast === 'function') toast(e.message || 'Upload failed', 'error');
     console.error('File upload error:', e);
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+    input.value = '';
   }
-  input.value = '';
 }
 
 function markConvRead(convId) {
@@ -1044,6 +1059,16 @@ loadConversations(true);
 // Close modal on backdrop click
 document.getElementById('newChatModal').addEventListener('click', function(e) {
   if (e.target === this) closeNewChat();
+});
+
+// Close sidebar on mobile when tapping outside
+document.addEventListener('click', function(e) {
+  var sidebar = document.getElementById('chatSidebar');
+  if (sidebar && sidebar.classList.contains('mobile-open') && window.innerWidth <= 768) {
+    if (!sidebar.contains(e.target)) {
+      sidebar.classList.remove('mobile-open');
+    }
+  }
 });
 </script>
 </body>
