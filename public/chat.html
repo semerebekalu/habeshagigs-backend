@@ -741,8 +741,8 @@ async function openConversation(convId, name, otherId) {
             '<div class="date-divider"><span>' + msgDate + '</span></div>');
           lastDate = msgDate;
         }
-        var isMine = m.sender_id === user.id;
-        var isFirst = i === 0 || messages[i-1].sender_id !== m.sender_id;
+        var isMine = String(m.sender_id) === String(user.id);
+        var isFirst = i === 0 || String(messages[i-1].sender_id) !== String(m.sender_id);
         appendMessage(m, isMine, isFirst);
       });
       container.scrollTop = container.scrollHeight;
@@ -755,8 +755,6 @@ async function openConversation(convId, name, otherId) {
   var sidebar = document.getElementById('chatSidebar');
   if (sidebar) sidebar.classList.remove('mobile-open');
 }
-
-async function openOrCreateConv(otherId) {
   try {
     var res = await apiFetch('/chat/conversations/start', {
       method: 'POST',
@@ -910,23 +908,16 @@ async function sendFile() {
   var input = document.getElementById('fileAttachInput');
   if (!input || !input.files || !input.files[0] || !activeConvId) return;
   var file = input.files[0];
+  if (file.size > 25 * 1024 * 1024) {
+    if (typeof toast === 'function') toast('File must be under 25 MB', 'error');
+    input.value = '';
+    return;
+  }
   var formData = new FormData();
   formData.append('file', file);
-  formData.append('conversation_id', activeConvId);
-
-  var tempId = 'temp_' + Date.now();
-  var isImage = file.type.startsWith('image/');
-  appendMessage({
-    id: tempId,
-    conversation_id: activeConvId,
-    sender_id: user.id,
-    content: isImage ? '[Image]' : '[File: ' + file.name + ']',
-    content_type: isImage ? 'image' : 'document',
-    created_at: new Date().toISOString(),
-    is_read: 0
-  }, true, true);
 
   try {
+    if (typeof toast === 'function') toast('Uploading...', '');
     var token = getToken();
     var res = await fetch('/api/chat/upload', {
       method: 'POST',
@@ -934,15 +925,34 @@ async function sendFile() {
       body: formData
     });
     var data = await res.json();
+    if (!res.ok) throw data;
+
+    // data.file_url is the path, data.content_type is 'image'/'document'/'voice'
+    var tempId = 'temp_' + Date.now();
+    appendMessage({
+      id: tempId,
+      conversation_id: activeConvId,
+      sender_id: user.id,
+      content: file.name,
+      content_type: data.content_type,
+      file_url: data.file_url,
+      created_at: new Date().toISOString(),
+      is_read: 0
+    }, true, true);
+
     if (socket && socket.connected) {
       socket.emit('chat:send', {
         conversation_id: activeConvId,
-        content: data.url || '',
-        content_type: isImage ? 'image' : 'document',
-        file_url: data.url
+        content: file.name,
+        content_type: data.content_type,
+        file_url: data.file_url
       });
     }
-  } catch(e) { console.error('File upload error:', e); }
+    updateConvPreview(activeConvId, data.content_type === 'image' ? '[Image]' : '[File: ' + file.name + ']');
+  } catch(e) {
+    if (typeof toast === 'function') toast('Upload failed', 'error');
+    console.error('File upload error:', e);
+  }
   input.value = '';
 }
 
