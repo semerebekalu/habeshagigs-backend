@@ -143,8 +143,10 @@ io.on('connection', (socket) => {
                 sender_name: sender?.full_name, content, content_type: content_type || 'text',
                 file_url: file_url || null, created_at: new Date(), is_read: 0
             };
+            // Only emit to the RECIPIENT — sender already has the message via optimistic UI
             io.to(`user:${recipientId}`).emit('chat:receive', msg);
-            socket.emit('chat:receive', msg);
+            // Also emit back to sender's OTHER sessions (e.g. multiple tabs) but not the sending socket
+            socket.to(`user:${socket.userId}`).emit('chat:receive', msg);
 
             // Notify recipient if offline (not in any socket room for their user)
             const recipientSockets = await io.in(`user:${recipientId}`).fetchSockets();

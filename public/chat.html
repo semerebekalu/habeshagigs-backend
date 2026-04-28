@@ -126,12 +126,16 @@ let allConvs = [];
 // ── Socket ─────────────────────────────────────────────────
 function connectSocket() {
   socket = io({ auth: { token: getToken() } });
-  socket.on('connect', () => console.log('Socket connected'));
-  socket.on('connect_error', (e) => console.log('Socket error:', e.message));
+  socket.on('connect', () => console.log('✅ Socket connected'));
+  socket.on('connect_error', (e) => console.warn('Socket error:', e.message));
 
   socket.on('chat:receive', (msg) => {
+    // Skip messages we sent ourselves — we already appended them optimistically
+    if (msg.sender_id === user.id) return;
+
     if (msg.conversation_id === activeConvId) {
-      appendMessage(msg, msg.sender_id === user.id);
+      appendMessage(msg, false);
+      container_scrollBottom();
       // Mark as read immediately since we're viewing this conversation
       socket.emit('chat:read', { conversation_id: activeConvId });
     } else {
@@ -144,7 +148,7 @@ function connectSocket() {
     if (data.conversation_id === activeConvId && data.sender_id !== user.id) {
       const el = document.getElementById('typingIndicator');
       if (el) {
-        el.textContent = 'typing...';
+        el.textContent = '✍️ typing...';
         clearTimeout(el._timer);
         el._timer = setTimeout(() => { if (el) el.textContent = ''; }, 2500);
       }
@@ -153,17 +157,17 @@ function connectSocket() {
 
   socket.on('chat:read', (data) => {
     if (data.conversation_id === activeConvId) {
-      // Mark all sent messages as read visually
+      // Update all sent message read receipts to blue double-check
       document.querySelectorAll('.msg-read-status').forEach(el => {
-        el.textContent = '✓✓';
-        el.style.color = 'var(--teal)';
+        el.innerHTML = '<span style="color:var(--teal);">✓✓</span>';
       });
     }
   });
+}
 
-  socket.on('notification:new', () => {
-    loadNotifications();
-  });
+function container_scrollBottom() {
+  const c = document.getElementById('messages');
+  if (c) c.scrollTop = c.scrollHeight;
 }
 
 // ── Load conversations ─────────────────────────────────────
@@ -308,14 +312,18 @@ async function openOrCreateConv(otherId) {
 function appendMessage(msg, isMine) {
   const container = document.getElementById('messages');
   if (!container) return;
+
+  // Deduplicate: skip if a message with this real id already exists
+  if (msg.id && !String(msg.id).startsWith('temp_') && container.querySelector(`[data-msg-id="${msg.id}"]`)) return;
+
   const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender_name||'User')}&background=${isMine?'1E3A8A':'14B8A6'}&color=fff&size=60`;
   const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   let contentHtml = '';
   const ct = msg.content_type || 'text';
   if (ct === 'image' && msg.file_url) {
-    contentHtml = `<img src="${msg.file_url}" style="max-width:220px;border-radius:8px;display:block;margin-bottom:4px;" onclick="window.open('${msg.file_url}','_blank')" />`;
-    if (msg.content) contentHtml += `<div>${escapeHtml(msg.content)}</div>`;
+    contentHtml = `<img src="${msg.file_url}" style="max-width:220px;border-radius:8px;display:block;margin-bottom:4px;cursor:pointer;" onclick="window.open('${msg.file_url}','_blank')" />`;
+    if (msg.content && msg.content !== msg.file_url.split('/').pop()) contentHtml += `<div>${escapeHtml(msg.content)}</div>`;
   } else if (ct === 'document' && msg.file_url) {
     const fname = msg.file_url.split('/').pop();
     contentHtml = `<a href="${msg.file_url}" target="_blank" style="display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none;"><span style="font-size:1.4rem;">📄</span><span style="text-decoration:underline;">${escapeHtml(fname)}</span></a>`;
@@ -327,7 +335,7 @@ function appendMessage(msg, isMine) {
 
   const el = document.createElement('div');
   el.className = `msg-wrap ${isMine ? 'sent' : ''}`;
-  el.dataset.msgId = msg.id;
+  el.setAttribute('data-msg-id', msg.id || '');
   el.innerHTML = `
     ${!isMine ? `<img class="msg-avatar" src="${avatar}" alt="" />` : ''}
     <div>
@@ -368,7 +376,7 @@ function handleKey(e) {
     sendMessage();
   } else if (socket && activeConvId) {
     const otherId = getOtherUserId();
-    if (otherId) socket.emit('chat:typing', { recipient_id: otherId });
+    if (otherId) socket.emit('chat:typing', { recipient_id: otherId, conversation_id: activeConvId });
   }
 }
 
@@ -385,16 +393,34 @@ async function sendMessage() {
   input.value = '';
   input.style.height = 'auto';
 
-  const tempMsg = { conversation_id: activeConvId, sender_id: user.id, sender_name: user.name, content, content_type: 'text', created_at: new Date(), is_read: 0 };
+  // Optimistic UI — append immediately with a temp id
+  const tempId = 'temp_' + Date.now();
+  const tempMsg = {
+    id: tempId,
+    conversation_id: activeConvId,
+    sender_id: user.id,
+    sender_name: user.name,
+    content,
+    content_type: 'text',
+    created_at: new Date().toISOString(),
+    is_read: 0
+  };
   appendMessage(tempMsg, true);
 
   if (socket && socket.connected) {
+    // Server will broadcast to recipient only — we already showed it optimistically
     socket.emit('chat:send', { conversation_id: activeConvId, content, content_type: 'text' });
   } else {
+    // Fallback: REST API
     try {
       await apiFetch('/chat/messages', { method: 'POST', body: JSON.stringify({ conversation_id: activeConvId, content }) });
-    } catch (err) { toast('Failed to send', 'error'); }
+    } catch (err) {
+      toast('Failed to send message', 'error');
+      // Remove the optimistic message on failure
+      document.querySelector(`[data-msg-id="${tempId}"]`)?.remove();
+    }
   }
+  updateConvPreview(activeConvId, content);
 }
 
 async function sendFile() {
@@ -402,7 +428,6 @@ async function sendFile() {
   if (!input || !input.files[0] || !activeConvId) return;
   const file = input.files[0];
 
-  // Enforce 25 MB client-side
   if (file.size > 25 * 1024 * 1024) {
     toast('File must be under 25 MB', 'error');
     input.value = '';
@@ -422,13 +447,26 @@ async function sendFile() {
     if (!res.ok) throw data;
 
     const content = file.name;
-    const tempMsg = { conversation_id: activeConvId, sender_id: user.id, sender_name: user.name, content, content_type: data.content_type, file_url: data.file_url, created_at: new Date(), is_read: 0 };
+    // Optimistic append
+    const tempMsg = {
+      id: 'temp_' + Date.now(),
+      conversation_id: activeConvId,
+      sender_id: user.id,
+      sender_name: user.name,
+      content,
+      content_type: data.content_type,
+      file_url: data.file_url,
+      created_at: new Date().toISOString(),
+      is_read: 0
+    };
     appendMessage(tempMsg, true);
 
+    // Emit via socket — server broadcasts to recipient only
     if (socket && socket.connected) {
       socket.emit('chat:send', { conversation_id: activeConvId, content, content_type: data.content_type, file_url: data.file_url });
     }
     input.value = '';
+    updateConvPreview(activeConvId, `📎 ${content}`);
   } catch (err) {
     toast(err.message || 'Upload failed', 'error');
   }
@@ -521,7 +559,7 @@ function getTimeAgo(dateStr) {
 
 connectSocket();
 loadConversations();
-loadNotifications();
+// Notifications handled by notifications.js (NotifCenter)
 </script>
 </body>
 </html>
