@@ -256,6 +256,8 @@
 <script src="js/i18n.js"></script>
 <script src="js/notifications.js?v=1"></script>
 <script>
+if (!isLoggedIn()) window.location.href = '/login.html';
+const user = getUser();
 const params = new URLSearchParams(window.location.search);
 const contractId = params.get('id');
 if (!contractId) window.location.href = '/dashboard.html';
