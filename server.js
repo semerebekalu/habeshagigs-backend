@@ -309,6 +309,20 @@ setImmediate(async () => {
             )`);
         } catch (e) { console.log('audit log table already exists'); }
 
+        // Contract comments table
+        try {
+            await dbConn.query(`CREATE TABLE IF NOT EXISTS contract_comments (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                contract_id INT NOT NULL,
+                milestone_id INT NULL,
+                user_id INT NOT NULL,
+                message TEXT NOT NULL,
+                created_at DATETIME DEFAULT NOW(),
+                CONSTRAINT fk_cc_contract FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE,
+                CONSTRAINT fk_cc_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )`);
+        } catch (e) { console.log('contract_comments table already exists'); }
+
         console.log('✅ Startup schema checks complete');
     } catch (e) {
         console.error('❌ Startup schema error:', e.message);

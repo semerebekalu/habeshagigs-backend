@@ -267,4 +267,57 @@ router.post('/:id/cancel', authenticate, async (req, res) => {
     }
 });
 
+// GET /api/contracts/:id/comments
+router.get('/:id/comments', authenticate, async (req, res) => {
+    try {
+        const [[contract]] = await db.query('SELECT * FROM contracts WHERE id = ?', [req.params.id]);
+        if (!contract) return res.status(404).json({ error: 'NOT_FOUND' });
+        if (req.user.id !== contract.client_id && req.user.id !== contract.freelancer_id) {
+            return res.status(403).json({ error: 'FORBIDDEN' });
+        }
+        const [comments] = await db.query(
+            `SELECT cc.*, u.full_name, u.role FROM contract_comments cc
+             JOIN users u ON cc.user_id = u.id
+             WHERE cc.contract_id = ?
+             ORDER BY cc.created_at ASC`,
+            [req.params.id]
+        );
+        res.json(comments);
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
+// POST /api/contracts/:id/comments
+router.post('/:id/comments', authenticate, async (req, res) => {
+    const { message, milestone_id } = req.body;
+    if (!message || !message.trim()) return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'Message required' });
+    try {
+        const [[contract]] = await db.query('SELECT * FROM contracts WHERE id = ?', [req.params.id]);
+        if (!contract) return res.status(404).json({ error: 'NOT_FOUND' });
+        if (req.user.id !== contract.client_id && req.user.id !== contract.freelancer_id) {
+            return res.status(403).json({ error: 'FORBIDDEN' });
+        }
+        const [result] = await db.query(
+            'INSERT INTO contract_comments (contract_id, milestone_id, user_id, message) VALUES (?, ?, ?, ?)',
+            [req.params.id, milestone_id || null, req.user.id, message.trim()]
+        );
+        const [[comment]] = await db.query(
+            `SELECT cc.*, u.full_name, u.role FROM contract_comments cc
+             JOIN users u ON cc.user_id = u.id WHERE cc.id = ?`,
+            [result.insertId]
+        );
+        // Notify the other party
+        const otherId = req.user.id === contract.client_id ? contract.freelancer_id : contract.client_id;
+        const { enqueueNotification } = require('../modules/notification/notificationService');
+        await enqueueNotification(otherId, 'contract_signed', {
+            title: '💬 New comment on contract #' + req.params.id,
+            message: message.trim().substring(0, 100)
+        }).catch(() => {});
+        res.json(comment);
+    } catch (err) {
+        res.status(500).json({ error: 'SERVER_ERROR', message: err.message });
+    }
+});
+
 module.exports = router;
